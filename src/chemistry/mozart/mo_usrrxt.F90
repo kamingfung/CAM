@@ -3,6 +3,7 @@ module mo_usrrxt
   use shr_kind_mod,     only : r8 => shr_kind_r8
   use cam_logfile,      only : iulog
   use ppgrid,           only : pver, pcols
+  use seq_drydep_mod,   only : n_species_table, species_name_table, dheff  ! WSY for Phase Transfer; need access to the Henry's law constant
 
   implicit none
 
@@ -27,6 +28,10 @@ module mo_usrrxt
   integer :: usr_MPAN_M_ndx
   integer :: usr_XOOH_OH_ndx
   integer :: usr_SO2_OH_ndx
+  integer :: usr_DMS_OHb_ndx    ! fkm for DMS intermediates
+  integer :: usr_is_shift_1_ndx   ! fkm for iso pathway
+  integer :: usr_is_shift_2_ndx   ! fkm for iso pathway
+  integer :: usr_is_HPMTF_cloud_ndx ! fkm for HPMTF uptake
   integer :: usr_DMS_OH_ndx
   integer :: usr_HO2_aer_ndx
   integer :: usr_GLYOXAL_aer_ndx
@@ -49,76 +54,6 @@ module mo_usrrxt
   integer :: usr_NTERPOOH_aer_ndx
   integer :: usr_NC4CHO_aer_ndx
   integer :: usr_NC4CH2OH_aer_ndx
-!TS2
- integer :: usr_ISOPZD1O2_ndx
- integer :: usr_ISOPZD4O2_ndx
- integer :: usr_ISOPFDN_aer_ndx
- integer :: usr_ISOPFNP_aer_ndx
- integer :: usr_ISOPN2B_aer_ndx
- integer :: usr_ISOPN1D_aer_ndx
- integer :: usr_ISOPN4D_aer_ndx
- integer :: usr_INOOHD_aer_ndx
- integer :: usr_INHEB_aer_ndx
- integer :: usr_INHED_aer_ndx
- integer :: usr_MACRN_aer_ndx
- integer :: usr_ISOPHFP_aer_ndx
- integer :: usr_IEPOX_aer_ndx
- integer :: usr_DHPMPAL_aer_ndx
- integer :: usr_ICHE_aer_ndx
- integer :: usr_ISOPFNC_aer_ndx
- integer :: usr_ISOPFDNC_aer_ndx
- integer :: usr_ISOPB1O2_NOn_ndx
- integer :: usr_ISOPB1O2_NOa_ndx
- integer :: usr_ISOPB4O2_NOn_ndx
- integer :: usr_ISOPB4O2_NOa_ndx
- integer :: usr_ISOPED1O2_NOn_ndx
- integer :: usr_ISOPED1O2_NOa_ndx
- integer :: usr_ISOPED4O2_NOn_ndx
- integer :: usr_ISOPED4O2_NOa_ndx
- integer :: usr_ISOPZD1O2_NOn_ndx
- integer :: usr_ISOPZD1O2_NOa_ndx
- integer :: usr_ISOPZD4O2_NOn_ndx
- integer :: usr_ISOPZD4O2_NOa_ndx
- integer :: usr_ISOPNO3_NOn_ndx
- integer :: usr_ISOPNO3_NOa_ndx
- integer :: usr_MVKO2_NOn_ndx
- integer :: usr_MVKO2_NOa_ndx
- integer :: usr_MACRO2_NOn_ndx
- integer :: usr_MACRO2_NOa_ndx
- integer :: usr_IEPOXOO_NOn_ndx
- integer :: usr_IEPOXOO_NOa_ndx
- integer :: usr_ISOPN1DO2_NOn_ndx
- integer :: usr_ISOPN1DO2_NOa_ndx
- integer :: usr_ISOPN2BO2_NOn_ndx
- integer :: usr_ISOPN2BO2_NOa_ndx
- integer :: usr_ISOPN3BO2_NOn_ndx
- integer :: usr_ISOPN3BO2_NOa_ndx
- integer :: usr_ISOPN4DO2_NOn_ndx
- integer :: usr_ISOPN4DO2_NOa_ndx
- integer :: usr_ISOPNBNO3O2_NOn_ndx
- integer :: usr_ISOPNBNO3O2_NOa_ndx
- integer :: usr_ISOPNOOHBO2_NOn_ndx
- integer :: usr_ISOPNOOHBO2_NOa_ndx
- integer :: usr_ISOPNOOHDO2_NOn_ndx
- integer :: usr_ISOPNOOHDO2_NOa_ndx
- integer :: usr_NC4CHOO2_NOn_ndx
- integer :: usr_NC4CHOO2_NOa_ndx
- integer :: tag_MCO3_NO2_ndx
- integer :: tag_TERPACO3_NO2_ndx
- integer :: usr_TERPAPAN_M_ndx
- integer :: tag_TERPA2CO3_NO2_ndx
- integer :: usr_TERPA2PAN_M_ndx
- integer :: tag_TERPA3CO3_NO2_ndx
- integer :: usr_TERPA3PAN_M_ndx
- integer :: usr_TERPNT_aer_ndx
- integer :: usr_TERPNT1_aer_ndx
- integer :: usr_TERPNPT_aer_ndx
- integer :: usr_TERPNPT1_aer_ndx
- integer :: usr_TERPFDN_aer_ndx
- integer :: usr_SQTN_aer_ndx
- integer :: usr_TERPHFN_aer_ndx
- integer :: usr_TERPDHDP_aer_ndx
- integer :: usr_TERPACID_aer_ndx
 !
   integer :: usr_OA_O2_NDX
   integer :: usr_XNO2NO3_M_ndx
@@ -171,6 +106,49 @@ module mo_usrrxt
   integer :: usr_oh_co_ndx, het_no2_h2o_ndx, usr_oh_dms_ndx, aq_so2_h2o2_ndx, aq_so2_o3_ndx
 
   integer :: h2o_ndx
+  
+  ! ---------------------------------------------------------------
+  ! WSY for Phase Transfer: phase-transfer and aqueous-phase chemistry on wet aerosols
+  ! ---------------------------------------------------------------
+  integer :: g2a_SO2_a1_ndx, g2a_SO2_a2_ndx, g2a_SO2_a3_ndx, a2g_SO2_a1_ndx, a2g_SO2_a2_ndx, a2g_SO2_a3_ndx
+  integer :: g2a_H2O2_a1_ndx, g2a_H2O2_a2_ndx, g2a_H2O2_a3_ndx, a2g_H2O2_a1_ndx, a2g_H2O2_a2_ndx, a2g_H2O2_a3_ndx
+  integer :: alwc_SIV_H2O2_a1_ndx, alwc_SIV_H2O2_a2_ndx, alwc_SIV_H2O2_a3_ndx
+  
+  integer :: g2a_DMS_a1_ndx, g2a_DMS_a2_ndx, g2a_DMS_a3_ndx, a2g_DMS_a1_ndx, a2g_DMS_a2_ndx, a2g_DMS_a3_ndx   ! fkm for Phase Transfer
+  integer :: g2a_DMSO_a1_ndx, g2a_DMSO_a2_ndx, g2a_DMSO_a3_ndx, a2g_DMSO_a1_ndx, a2g_DMSO_a2_ndx, a2g_DMSO_a3_ndx   ! fkm for Phase Transfer
+  integer :: g2a_MSIA_a1_ndx, g2a_MSIA_a2_ndx, g2a_MSIA_a3_ndx, a2g_MSIA_a1_ndx, a2g_MSIA_a2_ndx, a2g_MSIA_a3_ndx   ! fkm for Phase Transfer
+  integer :: g2a_MSA_a1_ndx, g2a_MSA_a2_ndx, g2a_MSA_a3_ndx, a2g_MSA_a1_ndx, a2g_MSA_a2_ndx, a2g_MSA_a3_ndx   ! fkm for Phase Transfer
+  integer :: g2a_O3_a1_ndx, g2a_O3_a2_ndx, g2a_O3_a3_ndx, a2g_O3_a1_ndx, a2g_O3_a2_ndx, a2g_O3_a3_ndx   ! fkm for Phase Transfer
+  integer :: g2a_OH_a1_ndx, g2a_OH_a2_ndx, g2a_OH_a3_ndx, a2g_OH_a1_ndx, a2g_OH_a2_ndx, a2g_OH_a3_ndx   ! fkm for Phase Transfer
+  integer :: g2a_HOBR_a1_ndx, g2a_HOBR_a2_ndx, g2a_HOBR_a3_ndx, a2g_HOBR_a1_ndx, a2g_HOBR_a2_ndx, a2g_HOBR_a3_ndx   ! fkm for Phase Transfer
+  integer :: DMS_O3_a1_ndx, DMS_O3_a2_ndx, DMS_O3_a3_ndx        ! fkm for Phase Transfer
+  integer :: DMSO_OH_a1_ndx, DMSO_OH_a2_ndx, DMSO_OH_a3_ndx     ! fkm for Phase Transfer
+  integer :: MSIA_OH_a1_ndx, MSIA_OH_a2_ndx, MSIA_OH_a3_ndx     ! fkm for Phase Transfer
+  integer :: MSIA_O3_a1_ndx, MSIA_O3_a2_ndx, MSIA_O3_a3_ndx     ! fkm for Phase Transfer
+  integer :: MSA_OH_a1_ndx, MSA_OH_a2_ndx, MSA_OH_a3_ndx        ! fkm for Phase Transfer
+  integer :: SIV_HOBR_a1_ndx, SIV_HOBR_a2_ndx, SIV_HOBR_a3_ndx  ! fkm for Phase Transfer
+  integer :: SIV_O3_a1_ndx, SIV_O3_a2_ndx, SIV_O3_a3_ndx        ! fkm for Phase Transfer
+  
+  integer :: g2c_DMS_c_ndx, c2g_DMS_c_ndx  ! fkm for Cloud reactions
+  integer :: g2c_DMSO_c_ndx, c2g_DMSO_c_ndx  ! fkm for Cloud reactions
+  integer :: g2c_MSIA_c_ndx, c2g_MSIA_c_ndx  ! fkm for Cloud reactions
+  integer :: g2c_MSA_c_ndx, c2g_MSA_c_ndx  ! fkm for Cloud reactions
+  integer :: g2c_OH_c_ndx, c2g_OH_c_ndx  ! fkm for Cloud reactions
+  integer :: g2c_O3_c_ndx, c2g_O3_c_ndx  ! fkm for Cloud reactions
+  
+  integer :: DMS_O3_c_ndx ! fkm for Cloud reactions
+  integer :: DMSO_OH_c_ndx ! fkm for Cloud reactions
+  integer :: MSIA_OH_c_ndx ! fkm for Cloud reactions
+  integer :: MSIA_O3_c_ndx ! fkm for Cloud reactions
+  integer :: MSA_OH_c_ndx ! fkm for Cloud reactions
+  
+  real(r8), parameter :: small_value = 1.e-12_r8      ! fkm for Phase Transfer
+  
+  integer :: qaerwat_idx         = 0 ! fkm for MOSAIC aLWC
+  
+  integer :: pH_idx         = 0      ! fkm for MOSAIC pH
+  
+  integer  :: drop_radius_idx = 0    ! added by fkm for cloud reactions
 !
 ! jfl
 !
@@ -262,15 +240,14 @@ contains
     usr_PAN_M_ndx        = get_rxt_ndx( 'usr_PAN_M' )
     usr_CH3COCH3_OH_ndx  = get_rxt_ndx( 'usr_CH3COCH3_OH' )
     usr_MCO3_NO2_ndx     = get_rxt_ndx( 'usr_MCO3_NO2' )
-    tag_MCO3_NO2_ndx     = get_rxt_ndx( 'tag_MCO3_NO2' )
-    if( tag_MCO3_NO2_ndx<0 .and. usr_MCO3_NO2_ndx>0 ) then
-       tag_MCO3_NO2_ndx = usr_MCO3_NO2_ndx
-    endif
-
     usr_MPAN_M_ndx       = get_rxt_ndx( 'usr_MPAN_M' )
     usr_XOOH_OH_ndx      = get_rxt_ndx( 'usr_XOOH_OH' )
     usr_SO2_OH_ndx       = get_rxt_ndx( 'usr_SO2_OH' )
-    usr_DMS_OH_ndx       = get_rxt_ndx( 'usr_DMS_OH' )
+    usr_DMS_OHb_ndx      = get_rxt_ndx( 'fkm_DMS_OHb')    ! fkm for DMS intermediates
+    usr_DMS_OH_ndx       = get_rxt_ndx( 'usr_DMS_OH' )  ! commented fkm for DMS intermediates
+    usr_is_shift_1_ndx   = get_rxt_ndx( 'is_shift_1')     ! fkm for iso pathway
+    usr_is_shift_2_ndx   = get_rxt_ndx( 'is_shift_2')     ! fkm for iso pathway
+    usr_is_HPMTF_cloud_ndx = get_rxt_ndx( 'is_HPMTF_cloud')     ! fkm for HPMTF uptake
     usr_HO2_aer_ndx      = get_rxt_ndx( 'usr_HO2_aer' )
     usr_GLYOXAL_aer_ndx  = get_rxt_ndx( 'usr_GLYOXAL_aer' )
  !
@@ -291,75 +268,6 @@ contains
     usr_NTERPOOH_aer_ndx = get_rxt_ndx( 'usr_NTERPOOH_aer' )
     usr_NC4CHO_aer_ndx   = get_rxt_ndx( 'usr_NC4CHO_aer' )
     usr_NC4CH2OH_aer_ndx = get_rxt_ndx( 'usr_NC4CH2OH_aer' )
-!TS2
-    usr_ISOPZD1O2_ndx        = get_rxt_ndx( 'usr_ISOPZD1O2' )
-    usr_ISOPZD4O2_ndx        = get_rxt_ndx( 'usr_ISOPZD4O2' )
-    usr_ISOPFDN_aer_ndx      = get_rxt_ndx( 'usr_ISOPFDN_aer' )
-    usr_ISOPFNP_aer_ndx      = get_rxt_ndx( 'usr_ISOPFNP_aer' )
-    usr_ISOPN2B_aer_ndx      = get_rxt_ndx( 'usr_ISOPN2B_aer' )
-    usr_ISOPN1D_aer_ndx      = get_rxt_ndx( 'usr_ISOPN1D_aer' )
-    usr_ISOPN4D_aer_ndx      = get_rxt_ndx( 'usr_ISOPN4D_aer' )
-    usr_INOOHD_aer_ndx       = get_rxt_ndx( 'usr_INOOHD_aer' )
-    usr_INHEB_aer_ndx        = get_rxt_ndx( 'usr_INHEB_aer' )
-    usr_INHED_aer_ndx        = get_rxt_ndx( 'usr_INHED_aer' )
-    usr_MACRN_aer_ndx        = get_rxt_ndx( 'usr_MACRN_aer' )
-    usr_ISOPHFP_aer_ndx      = get_rxt_ndx( 'usr_ISOPHFP_aer' )
-    usr_IEPOX_aer_ndx        = get_rxt_ndx( 'usr_IEPOX_aer' )
-    usr_DHPMPAL_aer_ndx      = get_rxt_ndx( 'usr_DHPMPAL_aer' )
-    usr_ICHE_aer_ndx         = get_rxt_ndx( 'usr_ICHE_aer' )
-    usr_ISOPFNC_aer_ndx      = get_rxt_ndx( 'usr_ISOPFNC_aer' )
-    usr_ISOPFDNC_aer_ndx     = get_rxt_ndx( 'usr_ISOPFDNC_aer' )
-    usr_ISOPB1O2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPB1O2_NOn' )
-    usr_ISOPB1O2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPB1O2_NOa' )
-    usr_ISOPB4O2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPB4O2_NOn' )
-    usr_ISOPB4O2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPB4O2_NOa' )
-    usr_ISOPED1O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPED1O2_NOn' )
-    usr_ISOPED1O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPED1O2_NOa' )
-    usr_ISOPED4O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPED4O2_NOn' )
-    usr_ISOPED4O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPED4O2_NOa' )
-    usr_ISOPZD1O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPZD1O2_NOn' )
-    usr_ISOPZD1O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPZD1O2_NOa' )
-    usr_ISOPZD4O2_NOn_ndx    = get_rxt_ndx( 'usr_ISOPZD4O2_NOn' )
-    usr_ISOPZD4O2_NOa_ndx    = get_rxt_ndx( 'usr_ISOPZD4O2_NOa' )
-    usr_ISOPNO3_NOn_ndx      = get_rxt_ndx( 'usr_ISOPNO3_NOn' )
-    usr_ISOPNO3_NOa_ndx      = get_rxt_ndx( 'usr_ISOPNO3_NOa' )
-    usr_MVKO2_NOn_ndx        = get_rxt_ndx( 'usr_MVKO2_NOn' )
-    usr_MVKO2_NOa_ndx        = get_rxt_ndx( 'usr_MVKO2_NOa' )
-    usr_MACRO2_NOn_ndx       = get_rxt_ndx( 'usr_MACRO2_NOn' )
-    usr_MACRO2_NOa_ndx       = get_rxt_ndx( 'usr_MACRO2_NOa' )
-    usr_IEPOXOO_NOn_ndx     = get_rxt_ndx( 'usr_IEPOXOO_NOn' )
-    usr_IEPOXOO_NOa_ndx     = get_rxt_ndx( 'usr_IEPOXOO_NOa' )
-    usr_ISOPN1DO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN1DO2_NOn' )
-    usr_ISOPN1DO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN1DO2_NOa' )
-    usr_ISOPN2BO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN2BO2_NOn' )
-    usr_ISOPN2BO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN2BO2_NOa' )
-    usr_ISOPN3BO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN3BO2_NOn' )
-    usr_ISOPN3BO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN3BO2_NOa' )
-    usr_ISOPN4DO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPN4DO2_NOn' )
-    usr_ISOPN4DO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPN4DO2_NOa' )
-    usr_ISOPNBNO3O2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPNBNO3O2_NOn' )
-    usr_ISOPNBNO3O2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPNBNO3O2_NOa' )
-    usr_ISOPNOOHBO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPNOOHBO2_NOn' )
-    usr_ISOPNOOHBO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPNOOHBO2_NOa' )
-    usr_ISOPNOOHDO2_NOn_ndx     = get_rxt_ndx( 'usr_ISOPNOOHDO2_NOn' )
-    usr_ISOPNOOHDO2_NOa_ndx     = get_rxt_ndx( 'usr_ISOPNOOHDO2_NOa' )
-    usr_NC4CHOO2_NOn_ndx     = get_rxt_ndx( 'usr_NC4CHOO2_NOn' )
-    usr_NC4CHOO2_NOa_ndx     = get_rxt_ndx( 'usr_NC4CHOO2_NOa' )
-    tag_TERPACO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPACO3_NO2' )
-    usr_TERPAPAN_M_ndx     = get_rxt_ndx( 'usr_TERPAPAN_M' )
-    tag_TERPA2CO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPA2CO3_NO2' )
-    usr_TERPA2PAN_M_ndx     = get_rxt_ndx( 'usr_TERPA2PAN_M' )
-    tag_TERPA3CO3_NO2_ndx  = get_rxt_ndx( 'tag_TERPA3CO3_NO2' )
-    usr_TERPA3PAN_M_ndx     = get_rxt_ndx( 'usr_TERPA3PAN_M' )
-    usr_TERPNT_aer_ndx       = get_rxt_ndx( 'usr_TERPNT_aer' )
-    usr_TERPNT1_aer_ndx      = get_rxt_ndx( 'usr_TERPNT1_aer' )
-    usr_TERPNPT_aer_ndx      = get_rxt_ndx( 'usr_TERPNPT_aer' )
-    usr_TERPNPT1_aer_ndx     = get_rxt_ndx( 'usr_TERPNPT1_aer' )
-    usr_TERPFDN_aer_ndx        = get_rxt_ndx( 'usr_TERPFDN_aer' )
-    usr_SQTN_aer_ndx        = get_rxt_ndx( 'usr_SQTN_aer' )
-    usr_TERPHFN_aer_ndx        = get_rxt_ndx( 'usr_TERPHFN_aer' )
-    usr_TERPDHDP_aer_ndx        = get_rxt_ndx( 'usr_TERPDHDP_aer' )
-    usr_TERPACID_aer_ndx        = get_rxt_ndx( 'usr_TERPACID_aer' )
  !
  ! additional reactions for O3A/XNO
  !
@@ -510,6 +418,120 @@ contains
     usr_oh_dms_ndx  = get_rxt_ndx( 'usr_oh_dms' )
     aq_so2_h2o2_ndx  = get_rxt_ndx( 'aq_so2_h2o2' )
     aq_so2_o3_ndx  = get_rxt_ndx( 'aq_so2_o3' )
+    
+    ! write(iulog,*) 'fkmmm: begin getting ndx'
+
+    ! -----------------------------------    
+  	! WSY for Phase Transfer: phase-transfer on wet aerosols
+  	! -----------------------------------
+  	g2a_SO2_a1_ndx  = get_rxt_ndx( 'g2a_SO2_a1' )
+  	g2a_SO2_a2_ndx  = get_rxt_ndx( 'g2a_SO2_a2' )
+  	g2a_SO2_a3_ndx  = get_rxt_ndx( 'g2a_SO2_a3' )
+  	a2g_SO2_a1_ndx  = get_rxt_ndx( 'a2g_SO2_a1' )
+  	a2g_SO2_a2_ndx  = get_rxt_ndx( 'a2g_SO2_a2' )
+  	a2g_SO2_a3_ndx  = get_rxt_ndx( 'a2g_SO2_a3' )
+  	g2a_H2O2_a1_ndx  = get_rxt_ndx( 'g2a_H2O2_a1' )
+  	g2a_H2O2_a2_ndx  = get_rxt_ndx( 'g2a_H2O2_a2' )
+  	g2a_H2O2_a3_ndx  = get_rxt_ndx( 'g2a_H2O2_a3' )
+  	a2g_H2O2_a1_ndx  = get_rxt_ndx( 'a2g_H2O2_a1' )
+  	a2g_H2O2_a2_ndx  = get_rxt_ndx( 'a2g_H2O2_a2' )
+  	a2g_H2O2_a3_ndx  = get_rxt_ndx( 'a2g_H2O2_a3' )
+  	alwc_SIV_H2O2_a1_ndx  = get_rxt_ndx( 'alwc_SIV_H2O2_a1' )
+  	alwc_SIV_H2O2_a2_ndx  = get_rxt_ndx( 'alwc_SIV_H2O2_a2' )
+  	alwc_SIV_H2O2_a3_ndx  = get_rxt_ndx( 'alwc_SIV_H2O2_a3' )
+    
+    ! -----------------------------------    
+    ! fkm for Phase Transfer: phase-transfer on wet aerosols
+    ! -----------------------------------  
+    
+    g2a_OH_a1_ndx  = get_rxt_ndx( 'g2a_OH_a1' )
+    g2a_OH_a2_ndx  = get_rxt_ndx( 'g2a_OH_a2' )
+    g2a_OH_a3_ndx  = get_rxt_ndx( 'g2a_OH_a3' )
+    a2g_OH_a1_ndx  = get_rxt_ndx( 'a2g_OH_a1' )
+    a2g_OH_a2_ndx  = get_rxt_ndx( 'a2g_OH_a2' )
+    a2g_OH_a3_ndx  = get_rxt_ndx( 'a2g_OH_a3' )
+    g2a_O3_a1_ndx  = get_rxt_ndx( 'g2a_O3_a1' )
+    g2a_O3_a2_ndx  = get_rxt_ndx( 'g2a_O3_a2' )
+    g2a_O3_a3_ndx  = get_rxt_ndx( 'g2a_O3_a3' )
+    a2g_O3_a1_ndx  = get_rxt_ndx( 'a2g_O3_a1' )
+    a2g_O3_a2_ndx  = get_rxt_ndx( 'a2g_O3_a2' )
+    a2g_O3_a3_ndx  = get_rxt_ndx( 'a2g_O3_a3' )
+    
+    g2a_DMS_a1_ndx  = get_rxt_ndx( 'g2a_DMS_a1' )
+    g2a_DMS_a2_ndx  = get_rxt_ndx( 'g2a_DMS_a2' )
+    g2a_DMS_a3_ndx  = get_rxt_ndx( 'g2a_DMS_a3' )
+    a2g_DMS_a1_ndx  = get_rxt_ndx( 'a2g_DMS_a1' )
+    a2g_DMS_a2_ndx  = get_rxt_ndx( 'a2g_DMS_a2' )
+    a2g_DMS_a3_ndx  = get_rxt_ndx( 'a2g_DMS_a3' )
+    g2a_DMSO_a1_ndx  = get_rxt_ndx( 'g2a_DMSO_a1' )
+    g2a_DMSO_a2_ndx  = get_rxt_ndx( 'g2a_DMSO_a2' )
+    g2a_DMSO_a3_ndx  = get_rxt_ndx( 'g2a_DMSO_a3' )
+    a2g_DMSO_a1_ndx  = get_rxt_ndx( 'a2g_DMSO_a1' )
+    a2g_DMSO_a2_ndx  = get_rxt_ndx( 'a2g_DMSO_a2' )
+    a2g_DMSO_a3_ndx  = get_rxt_ndx( 'a2g_DMSO_a3' )
+    g2a_MSIA_a1_ndx  = get_rxt_ndx( 'g2a_MSIA_a1' )
+    g2a_MSIA_a2_ndx  = get_rxt_ndx( 'g2a_MSIA_a2' )
+    g2a_MSIA_a3_ndx  = get_rxt_ndx( 'g2a_MSIA_a3' )
+    a2g_MSIA_a1_ndx  = get_rxt_ndx( 'a2g_MSIA_a1' )
+    a2g_MSIA_a2_ndx  = get_rxt_ndx( 'a2g_MSIA_a2' )
+    a2g_MSIA_a3_ndx  = get_rxt_ndx( 'a2g_MSIA_a3' )
+    g2a_MSA_a1_ndx  = get_rxt_ndx( 'g2a_MSA_a1' )
+    g2a_MSA_a2_ndx  = get_rxt_ndx( 'g2a_MSA_a2' )
+    g2a_MSA_a3_ndx  = get_rxt_ndx( 'g2a_MSA_a3' )
+    a2g_MSA_a1_ndx  = get_rxt_ndx( 'a2g_MSA_a1' )
+    a2g_MSA_a2_ndx  = get_rxt_ndx( 'a2g_MSA_a2' )
+    a2g_MSA_a3_ndx  = get_rxt_ndx( 'a2g_MSA_a3' )
+    
+    DMS_O3_a1_ndx   = get_rxt_ndx( 'DMS_O3_a1' )
+    DMSO_OH_a1_ndx  = get_rxt_ndx( 'DMSO_OH_a1' )
+    MSIA_OH_a1_ndx  = get_rxt_ndx( 'MSIA_OH_a1' )
+    MSIA_O3_a1_ndx  = get_rxt_ndx( 'MSIA_O3_a1' )
+    MSA_OH_a1_ndx  = get_rxt_ndx( 'MSA_OH_a1' )
+    DMS_O3_a2_ndx   = get_rxt_ndx( 'DMS_O3_a2' )
+    DMSO_OH_a2_ndx  = get_rxt_ndx( 'DMSO_OH_a2' )
+    MSIA_OH_a2_ndx  = get_rxt_ndx( 'MSIA_OH_a2' )
+    MSIA_O3_a2_ndx  = get_rxt_ndx( 'MSIA_O3_a2' )
+    MSA_OH_a2_ndx  = get_rxt_ndx( 'MSA_OH_a2' )
+    DMS_O3_a3_ndx   = get_rxt_ndx( 'DMS_O3_a3' )
+    DMSO_OH_a3_ndx  = get_rxt_ndx( 'DMSO_OH_a3' )
+    MSIA_OH_a3_ndx  = get_rxt_ndx( 'MSIA_OH_a3' )
+    MSIA_O3_a3_ndx  = get_rxt_ndx( 'MSIA_O3_a3' )
+    MSA_OH_a3_ndx  = get_rxt_ndx( 'MSA_OH_a3' )
+    
+    g2a_HOBR_a1_ndx  = get_rxt_ndx( 'g2a_HOBR_a1' )
+    g2a_HOBR_a2_ndx  = get_rxt_ndx( 'g2a_HOBR_a2' )
+    g2a_HOBR_a3_ndx  = get_rxt_ndx( 'g2a_HOBR_a3' )
+    a2g_HOBR_a1_ndx  = get_rxt_ndx( 'a2g_HOBR_a1' )
+    a2g_HOBR_a2_ndx  = get_rxt_ndx( 'a2g_HOBR_a2' )
+    a2g_HOBR_a3_ndx  = get_rxt_ndx( 'a2g_HOBR_a3' )
+    SIV_HOBR_a1_ndx  = get_rxt_ndx( 'SIV_HOBR_a1' )
+    SIV_HOBR_a2_ndx  = get_rxt_ndx( 'SIV_HOBR_a2' )
+    SIV_HOBR_a3_ndx  = get_rxt_ndx( 'SIV_HOBR_a3' )
+    SIV_O3_a1_ndx  = get_rxt_ndx( 'SIV_O3_a1' )
+    SIV_O3_a2_ndx  = get_rxt_ndx( 'SIV_O3_a2' )
+    SIV_O3_a3_ndx  = get_rxt_ndx( 'SIV_O3_a3' )
+    
+    ! -----------------------------------    
+    ! fkm for Phase Transfer: phase-transfer on cloud
+    ! -----------------------------------  
+    g2c_DMS_c_ndx  = get_rxt_ndx( 'g2c_DMS_c' )
+    c2g_DMS_c_ndx  = get_rxt_ndx( 'c2g_DMS_c' )
+    g2c_DMSO_c_ndx  = get_rxt_ndx( 'g2c_DMSO_c' )
+    c2g_DMSO_c_ndx  = get_rxt_ndx( 'c2g_DMSO_c' )
+    g2c_MSIA_c_ndx  = get_rxt_ndx( 'g2c_MSIA_c' )
+    c2g_MSIA_c_ndx  = get_rxt_ndx( 'c2g_MSIA_c' )
+    g2c_MSA_c_ndx  = get_rxt_ndx( 'g2c_MSA_c' )
+    c2g_MSA_c_ndx  = get_rxt_ndx( 'c2g_MSA_c' )
+    g2c_OH_c_ndx  = get_rxt_ndx( 'g2c_OH_c' )
+    c2g_OH_c_ndx  = get_rxt_ndx( 'c2g_OH_c' )
+    g2c_O3_c_ndx  = get_rxt_ndx( 'g2c_O3_c' )
+    c2g_O3_c_ndx  = get_rxt_ndx( 'c2g_O3_c' )
+    
+    DMS_O3_c_ndx   = get_rxt_ndx( 'DMS_O3_c' )
+    DMSO_OH_c_ndx  = get_rxt_ndx( 'DMSO_OH_c' )
+    MSIA_OH_c_ndx  = get_rxt_ndx( 'MSIA_OH_c' )
+    MSIA_O3_c_ndx  = get_rxt_ndx( 'MSIA_O3_c' )
+    MSA_OH_c_ndx  = get_rxt_ndx( 'MSA_OH_c' )
 
 !lke++
 ! CO tags
@@ -566,26 +588,10 @@ contains
        write(iulog,'(10i5)') usr_O_O2_ndx,usr_HO2_HO2_ndx,tag_NO2_NO3_ndx,usr_N2O5_M_ndx,tag_NO2_OH_ndx,usr_HNO3_OH_ndx &
                             ,tag_NO2_HO2_ndx,usr_HO2NO2_M_ndx,usr_N2O5_aer_ndx,usr_NO3_aer_ndx,usr_NO2_aer_ndx &
                             ,usr_CO_OH_b_ndx,tag_C2H4_OH_ndx,tag_C3H6_OH_ndx,tag_CH3CO3_NO2_ndx,usr_PAN_M_ndx,usr_CH3COCH3_OH_ndx &
-                            ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx,usr_DMS_OH_ndx,usr_HO2_aer_ndx &
+                            ! ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx, usr_DMS_OH_ndx, usr_HO2_aer_ndx &    ! commented by fkm for DMS intermediates
+                            ,usr_MCO3_NO2_ndx,usr_MPAN_M_ndx,usr_XOOH_OH_ndx,usr_SO2_OH_ndx, usr_HO2_aer_ndx &  ! fkm for DMS intermediates
                             ,usr_GLYOXAL_aer_ndx,usr_ISOPNITA_aer_ndx,usr_ISOPNITB_aer_ndx,usr_ONITR_aer_ndx,usr_HONITR_aer_ndx &
-                            ,usr_TERPNIT_aer_ndx,usr_NTERPOOH_aer_ndx,usr_NC4CHO_aer_ndx,usr_NC4CH2OH_aer_ndx,usr_ISOPZD1O2_ndx &
-                            ,usr_ISOPZD4O2_ndx,usr_ISOPFDN_aer_ndx,usr_ISOPFNP_aer_ndx,usr_ISOPN2B_aer_ndx,usr_ISOPN1D_aer_ndx &
-                            ,usr_ISOPN4D_aer_ndx,usr_INOOHD_aer_ndx,usr_INHEB_aer_ndx,usr_INHED_aer_ndx,usr_MACRN_aer_ndx &
-                            ,usr_ISOPHFP_aer_ndx,usr_IEPOX_aer_ndx,usr_DHPMPAL_aer_ndx,usr_ISOPB1O2_NOn_ndx,usr_ISOPB1O2_NOa_ndx &
-                            ,usr_ISOPB4O2_NOn_ndx,usr_ISOPB4O2_NOa_ndx,usr_ISOPED1O2_NOn_ndx,usr_ISOPED1O2_NOa_ndx &
-                            ,usr_ISOPED4O2_NOn_ndx,usr_ISOPED4O2_NOa_ndx,usr_ISOPZD1O2_NOn_ndx,usr_ISOPZD1O2_NOa_ndx &
-                            ,usr_ISOPZD4O2_NOn_ndx,usr_ISOPZD4O2_NOa_ndx,usr_ISOPNO3_NOn_ndx,usr_ISOPNO3_NOa_ndx &
-                            ,usr_MVKO2_NOn_ndx,usr_MVKO2_NOa_ndx,usr_MACRO2_NOn_ndx,usr_MACRO2_NOa_ndx &
-                            ,usr_IEPOXOO_NOn_ndx,usr_IEPOXOO_NOa_ndx,usr_ISOPN1DO2_NOn_ndx,usr_ISOPN1DO2_NOa_ndx &
-                            ,usr_ISOPN2BO2_NOn_ndx,usr_ISOPN2BO2_NOa_ndx,usr_ISOPN3BO2_NOn_ndx,usr_ISOPN3BO2_NOa_ndx &
-                            ,usr_ISOPN4DO2_NOn_ndx,usr_ISOPN4DO2_NOa_ndx,usr_ISOPNBNO3O2_NOn_ndx,usr_ISOPNBNO3O2_NOa_ndx &
-                            ,usr_ISOPNOOHBO2_NOn_ndx,usr_ISOPNOOHBO2_NOa_ndx,usr_ISOPNOOHDO2_NOn_ndx,usr_ISOPNOOHDO2_NOa_ndx &
-                            ,usr_NC4CHOO2_NOn_ndx,usr_NC4CHOO2_NOa_ndx,tag_MCO3_NO2_ndx &
-                            ,usr_TERPNT_aer_ndx,tag_TERPA2CO3_NO2_ndx,usr_TERPA2PAN_M_ndx &
-                            ,usr_TERPNT1_aer_ndx,usr_TERPNPT_aer_ndx,usr_TERPNPT1_aer_ndx,usr_TERPFDN_aer_ndx,usr_SQTN_aer_ndx &
-                            ,usr_TERPHFN_aer_ndx,usr_TERPDHDP_aer_ndx,usr_TERPACID_aer_ndx,tag_TERPACO3_NO2_ndx &
-                            ,usr_TERPAPAN_M_ndx,tag_TERPA3CO3_NO2_ndx, usr_TERPA3PAN_M_ndx,usr_ICHE_aer_ndx,usr_ISOPFNC_aer_ndx &
-                            ,usr_ISOPFDNC_aer_ndx
+                            ,usr_TERPNIT_aer_ndx,usr_NTERPOOH_aer_ndx,usr_NC4CHO_aer_ndx,usr_NC4CH2OH_aer_ndx
 
     end if
 
@@ -593,25 +599,34 @@ contains
 
   subroutine usrrxt( rxt, temp, tempi, tempe, invariants, h2ovmr,  &
                      pmid, m, sulfate, mmr, relhum, strato_sad, &
+                     cldfrc, &          ! added by fkm for non-cloud sulfate 
+                     xphlwc, cloud_ph, &         ! added by fkm for cloud reactions
                      tropchemlev, dlat, ncol, sad_trop, reff_trop, cwat, mbar, pbuf )
 
 !-----------------------------------------------------------------
 !        ... set the user specified reaction rates
 !-----------------------------------------------------------------
 
+    use mo_chem_utls,   only : get_rxt_ndx, get_spc_ndx        ! fkm for Phase Transfer; added two new functions to get radius
     use mo_constants,  only : pi, avo => avogadro, boltz_cgs, rgas
     use chem_mods,     only : nfs, rxntot, gas_pcnst, inv_m_ndx=>indexm
     use mo_setinv,     only : inv_o2_ndx=>o2_ndx, inv_h2o_ndx=>h2o_ndx
-    use physics_buffer,only : physics_buffer_desc
+    ! use physics_buffer,only : physics_buffer_desc     ! commended by fkm for Phase Transfer;
+    use physics_buffer,only : physics_buffer_desc, pbuf_get_index, pbuf_get_field        ! fkm for Phase Transfer; added two new functions to get radius
     use carma_flags_mod, only : carma_hetchem_feedback
     use aero_model,      only : aero_model_surfarea
     use rad_constituents,only : rad_cnst_get_info
+    
+    use modal_aero_data, only : MOSAIC_pH, MOSAIC_HSO4, &
+                                MOSAIC_SO4, MOSAIC_NO3  ! dsj; fkm for MOSAIC pH
 
     implicit none
 
 !-----------------------------------------------------------------
 !        ... dummy arguments
 !-----------------------------------------------------------------
+    integer :: dgnumwet_idx                    ! fkm for Phase Transfer; 
+
     integer, intent(in)     :: ncol
     integer, intent(in)     :: tropchemlev(pcols)         ! trop/strat reaction separation vertical index
     real(r8), intent(in)    :: dlat(:)                    ! degrees latitude
@@ -632,6 +647,10 @@ contains
     real(r8), intent(out)   :: sad_trop(pcols,pver)       ! tropospheric surface area density (cm2/cm3)
     real(r8), intent(out)   :: reff_trop(pcols,pver)      ! tropospheric effective radius (cm)
     type(physics_buffer_desc), pointer :: pbuf(:)
+    
+    real(r8), intent(in)    :: cldfrc(pcols,pver)       ! cloud fraction; added by fkm for non-cloud sulfate 
+    real(r8), intent(inout)    :: xphlwc(pcols,pver)       ! cloud ph * LWC; added by fkm for cloud reactions
+    real(r8), intent(inout)    :: cloud_ph(pcols,pver)       ! cloud ph; added by fkm for cloud reactions
 
 !-----------------------------------------------------------------
 !        ... local variables
@@ -654,33 +673,9 @@ contains
     real(r8), parameter :: gamma_honitr    = 0.005_r8        !
     real(r8), parameter :: gamma_terpnit   = 0.01_r8         !
     real(r8), parameter :: gamma_nterpooh  = 0.01_r8         !
-    real(r8), parameter :: gamma_nc4cho    = 0.02_r8        !
+    real(r8), parameter :: gamma_nc4cho    = 0.005_r8        !
     real(r8), parameter :: gamma_nc4ch2oh  = 0.005_r8        !
-!TS2 species
-    real(r8), parameter :: gamma_isopfdn  = 0.1_r8          ! Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_isopfnp  = 0.1_r8          ! Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_isopn2b  = 0.02_r8        ! All isoprene nitrates Wolfe
-    real(r8), parameter :: gamma_isopn1d  = 0.02_r8        !
-    real(r8), parameter :: gamma_isopn4d  = 0.02_r8        !
-    real(r8), parameter :: gamma_inoohd   = 0.02_r8        !
-    real(r8), parameter :: gamma_inheb    = 0.02_r8       !Marais 2015 for IEPOX
-    real(r8), parameter :: gamma_inhed    = 0.02_r8       !Marais 2015 for IEPOX
-    real(r8), parameter :: gamma_macrn    = 0.02_r8        !
-    real(r8), parameter :: gamma_isophfp  = 0.1_r8          !Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_iepox    = 0.0042_r8       !Marais 2015 for IEPOX
-    real(r8), parameter :: gamma_dhpmpal  = 0.1_r8          !Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_iche     = 0.0042_r8       !Marais 2015 for IEPOX
-    real(r8), parameter :: gamma_isopfnc  = 0.1_r8          ! Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_isopfdnc = 0.1_r8          ! Marais 2015 for C5-LVOC
-    real(r8), parameter :: gamma_terpnt   = 0.02_r8        !
-    real(r8), parameter :: gamma_terpnt1  = 0.02_r8        !
-    real(r8), parameter :: gamma_terpnpt  = 0.02_r8        !
-    real(r8), parameter :: gamma_terpnpt1 = 0.02_r8        !
-    real(r8), parameter :: gamma_terpfdn  = 0.1_r8        !
-    real(r8), parameter :: gamma_sqtn     = 0.1_r8        !
-    real(r8), parameter :: gamma_terphfn  = 0.1_r8        !
-    real(r8), parameter :: gamma_terpdhdp = 0.1_r8        !
-    real(r8), parameter :: gamma_terpacid = 0.01_r8        !
+
 
     integer  ::  i, k
     integer  ::  l
@@ -705,12 +700,40 @@ contains
 !TS1 species
     real(r8) ::  c_isopnita, c_isopnitb, c_onitr, c_honitr, c_terpnit, c_nterpooh
     real(r8) ::  c_nc4cho, c_nc4ch2oh
-!T2 species
-    real(r8) ::  c_isopfdn, c_isopfnp, c_isopn2b, c_isopn1d, c_isopn4d, c_inoohd
-    real(r8) ::  c_inheb, c_inhed, c_macrn, c_isophfp, c_iepox, c_dhpmpal
-    real(r8) ::  c_iche, c_isopfnc, c_isopfdnc
-    real(r8) ::  c_terpnt, c_terpnt1, c_terpnpt, c_terpnpt1, c_terpfdn, c_sqtn, c_terphfn, c_terpdhdp, c_terpacid
-
+    
+    ! real(r8) ::  temp_1d (ncol)                 ! added by fkm for Phase Tranfser; temperature (K).
+    integer  :: id_aq_c                           ! added by fkm for cloud reactions
+    ! real(r8) ::  cloud_ph(ncol)                 ! added by fkm for cloud reactions 
+    real(r8), dimension(ncol) :: &
+                  faq_DMS, &              ! added by fkm for cloud reactions; distribution factor from Seinfeld Eq 7.26
+                  faq_DMSO, &                 ! added by fkm for cloud reactions; distribution factor from Seinfeld Eq 7.26
+                  faq_MSIA, &                 ! added by fkm for cloud reactions; distribution factor from Seinfeld Eq 7.26
+                  faq_MSA, &                 ! added by fkm for cloud reactions; distribution factor from Seinfeld Eq 7.26
+                  faq_OH, &                 ! added by fkm for cloud reactions; distribution factor from Seinfeld Eq 7.26
+                  faq_O3, &                 ! added by fkm for cloud reactions; distribution factor from Seinfeld Eq 7.26
+                  he_DMS, &                 ! added by fkm for cloud reactions; Henry's Law constant from Seinfeld Eq 7.26
+                  he_DMSO, &                 ! added by fkm for cloud reactions; Henry's Law constant from Seinfeld Eq 7.26
+                  he_MSIA, &                 ! added by fkm for cloud reactions; Henry's Law constant from Seinfeld Eq 7.26
+                  he_MSA, &                 ! added by fkm for cloud reactions; Henry's Law constant from Seinfeld Eq 7.26
+                  he_OH, &                 ! added by fkm for cloud reactions; Henry's Law constant from Seinfeld Eq 7.26
+                  he_O3                    ! added by fkm for cloud reactions; Henry's Law constant from Seinfeld Eq 7.26
+                  
+    real(r8) :: radius_cm_c(ncol)                 ! added by fkm for cloud reactions; cloud radius in [m]
+    real(r8) :: alwc_vol_vol_c(ncol)             ! added by fkm for cloud reactions; cloud vol-water to vol-air
+    
+    real(r8), dimension(ncol) :: &
+                  kt_DMS_a1,  kt_DMS_a2,  kt_DMS_a3,  &    ! added by fkm for cloud reactions; phase transfer constant from Seinfeld Eq 7.26
+                  kt_DMSO_a1, kt_DMSO_a2, kt_DMSO_a3, &    ! added by fkm for cloud reactions; phase transfer constant from Seinfeld Eq 7.26
+                  kt_MSIA_a1, kt_MSIA_a2, kt_MSIA_a3, &    ! added by fkm for cloud reactions; phase transfer constant from Seinfeld Eq 7.26
+                  kt_MSA_a1,  kt_MSA_a2,  kt_MSA_a3,  &    ! added by fkm for cloud reactions; phase transfer constant from Seinfeld Eq 7.26
+                  kt_OH_a1,   kt_OH_a2,   kt_OH_a3,   &    ! added by fkm for cloud reactions; phase transfer constant from Seinfeld Eq 7.26
+                  kt_O3_a1,   kt_O3_a2,   kt_O3_a3         ! added by fkm for cloud reactions; phase transfer constant from Seinfeld Eq 7.26
+                  
+                  
+    real(r8) ::  heff_M_atm_c(ncol)        ! added by fkm for cloud reactions; effective Henry's Law Constant
+    real(r8) ::  conv_aq_rate_coeff_c(ncol)   ! unit converter based on LWC for cloud reactions [M s-1 -> (molecules cm-3 s-1)]
+    real(r8) ::  cloud_fraction(ncol)       ! cloud fraction; added by fkm for cloud reactions
+ 
     real(r8) ::  amas
     !-----------------------------------------------------------------
     !	... density of sulfate aerosol
@@ -754,21 +777,67 @@ contains
     real(r8), parameter  :: ER2_AQ        =  5.28e+03_r8
 
     real(r8), parameter  :: pH            =  4.5e+00_r8
+    
+    real(r8), parameter  :: R_atm_per_K_per_M = 0.08205_r8  ! fkm for Phase Transit; gas constant [L atm mol^-1 K^-1 or atm M^-1 K^-1]
 
     real(r8), pointer :: sfc(:), dm_aer(:)
     integer :: ntot_amode
+    
+    ! -------------------------------    
+    ! WSY for Phase Transfer: dummies for phase-transfer
+    ! -------------------------------
+    integer   :: id_gas, id_aq_a1, id_aq_a2, id_aq_a3
+    real(r8)  :: MW_gas_kg_mol, mass_accommodation_coeff
+    real(r8)  :: thermalspeed_cm_s(ncol)
+    real(r8)  :: radius_cm_a1(ncol)
+    real(r8)  :: radius_cm_a2(ncol)
+    real(r8)  :: radius_cm_a3(ncol)
+    real(r8)  :: alwc_vol_vol_a1(ncol)
+    real(r8)  :: alwc_vol_vol_a2(ncol)
+    real(r8)  :: alwc_vol_vol_a3(ncol)
+    real(r8)  :: heff_M_atm_a1(ncol)
+    real(r8)  :: heff_M_atm_a2(ncol)
+    real(r8)  :: heff_M_atm_a3(ncol)
+    real(r8)  :: pH_a1(ncol)
+    real(r8)  :: pH_a2(ncol)
+    real(r8)  :: pH_a3(ncol)
+    real(r8)  :: conv_aq_rate_coeff_a1(ncol)
+    real(r8)  :: conv_aq_rate_coeff_a2(ncol)
+    real(r8)  :: conv_aq_rate_coeff_a3(ncol)
+  
+    real(r8)  :: alwc_vol_vol(ncol)       ! fkm for Phase Transit; aerosol Liquid Water Content (cm^3-water / cm^3-air)
+    real(r8), pointer :: qaerwat(:,:,:)   ! aerosol water-air mass ratio?; fkm for MOSAIC aLWC (kg/kg)
+    real(r8), pointer :: pH_buf(:,:,:)    ! aerosol pH; fkm for MOSAIC pH
+    
+    real(r8), pointer :: drop_radius_um(:,:) ! fkm for cloud reactions; effective cloud drop radius (um)
+    
+    character(len=16) :: SpeciesName	
 
     real(r8), pointer :: sfc_array(:,:,:), dm_array(:,:,:)
- !TS2
-    real(r8) ::  aterm(ncol)
-    real(r8) ::  natom
-    real(r8) ::  nyield
-    real(r8) ::  acorr
-    real(r8) ::  exp_natom
+
+    real(r8), pointer :: dgncur_awet(:,:,:)   ! fkm for Phase Transit; dgncur_awet = geometric mean wet diameter for number distribution (m)
 
     ! get info about the modal aerosols
     ! get ntot_amode
     call rad_cnst_get_info(0, nmodes=ntot_amode)
+    
+    dgnumwet_idx    = pbuf_get_index('DGNUMWET')
+    call pbuf_get_field(pbuf, dgnumwet_idx,   dgncur_awet, start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )   ! fkm for Phase Transit; getting the dgncur_awet
+    
+    !!! ====== [BEG: fkm for MOSAIC aLWC] =====
+    qaerwat_idx    = pbuf_get_index('QAERWAT')
+    call pbuf_get_field(pbuf, qaerwat_idx,        qaerwat,  start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )  ! getting aerosol water mass ratio
+    !!! ====== [END: fkm for MOSAIC aLWC] =====
+    
+    !!! ====== [BEG: fkm for MOSAIC pH] =====
+    pH_idx = pbuf_get_index('MOSAIC_pH')
+    call pbuf_get_field(pbuf, pH_idx, pH_buf,  start=(/1,1,1/), kount=(/pcols,pver,ntot_amode/) )
+    !!! ====== [END: fkm for MOSAIC pH] =====
+    
+    !!! ====== [BEG: fkm for cloud reactions] =====
+    drop_radius_idx    = pbuf_get_index('REL')
+    call pbuf_get_field(pbuf, drop_radius_idx,        drop_radius_um,  start=(/1,1/), kount=(/pcols,pver/) )  ! getting effective cloud drop radius (liq) (um)
+    !!! ====== [END: fkm for cloud reaction] =====
 
     if (ntot_amode>0) then
        allocate(sfc_array(pcols,pver,ntot_amode), dm_array(pcols,pver,ntot_amode) )
@@ -781,7 +850,7 @@ contains
     sad_trop(:,:) = 0._r8
     reff_trop(:,:) = 0._r8
 
-    if( usr_NO2_aer_ndx > 0 .or. usr_NO3_aer_ndx > 0 .or. usr_N2O5_aer_ndx > 0 .or. usr_HO2_aer_ndx > 0 ) then
+    if( usr_NO2_aer_ndx > 0 .or. usr_NO3_aer_ndx > 0 .or. usr_N2O5_aer_ndx > 0 .or. usr_HO2_aer_ndx > 0 ) then ! commended by fkm for Phase Transfer
 
 ! sad_trop should be set outside of usrrxt ??
        if( carma_hetchem_feedback ) then
@@ -793,13 +862,726 @@ contains
                het1_ndx, pbuf, ncol, sfc_array, dm_array, sad_trop, reff_trop )
 
        endif
-    endif
+    endif   ! commended by fkm for Phase Transfer
 
     level_loop : do k = 1,pver
        tinv(:)           = 1._r8 / temp(:ncol,k)
        tp(:)             = 300._r8 * tinv(:)
        sqrt_t(:)         = sqrt( temp(:ncol,k) )
        sqrt_t_58(:)      = sqrt( temp(:ncol,k) / 58.0_r8 )
+       
+       ! write(iulog,*) 'fkmmm: starts of the new codes'
+       ! temp_1d(:)        = temp (:ncol,k)    ! added by fkm for Phase Transfer; 1-D temperature
+       
+       ! ===================================
+       ! fkm for cloud reactions
+       ! ===================================
+       do i = 1,ncol
+         
+        if ( cloud_ph(i,k) .lt. 0._r8 .or. cloud_ph(i,k) .gt. 14._r8 ) then
+          cloud_ph(i,k)       = 4.5_r8   ! fkm: cwat = wL cloud LWc (L of water / L of air)
+        end if
+        
+       end do
+       
+       lwc(:) = cwat(:ncol,k) * invariants(:ncol,k,inv_m_ndx) / avo * mbar(:ncol,k) !PJC convert kg-water/kg-air to g-water/cm3-air (also = w_L (vol-water/vol-air) because 1 g = 1 cm3 of water)
+       ! write(iulog,*) 'fkmmm: Phase Transfer; before LWC', lwc
+       
+       alwc_vol_vol_c(:) = max( 1.e-12_r8, cwat(:ncol,k) * invariants(:ncol,k,inv_m_ndx) / avo * mbar(:ncol,k))
+       
+       
+       conv_aq_rate_coeff_c(:)  = 1.e3_r8 / (avo * max(1.e-12_r8, alwc_vol_vol_c(:))) ! 1.e3_r8 / (avo * max(small_value, lwc(:))) 
+
+       ! ===================================
+       ! WSY for Phase Transfer: phase-transfer on wet aerosols
+       ! Siyuan Wang (siyuan@ucar.edu)
+       ! ===================================
+       
+       ! fkm qaerwat
+       alwc_vol_vol_a1(:) = max( 1.e-12_r8, qaerwat(:ncol, k, 1) * invariants(:ncol,k,inv_m_ndx) / avo * mbar(:ncol,k) ) ! fkm for Phase Transfer; use small_value to avoid 1/0 = NaN
+       alwc_vol_vol_a2(:) = max( 1.e-12_r8, qaerwat(:ncol, k, 2) * invariants(:ncol,k,inv_m_ndx) / avo * mbar(:ncol,k) ) ! fkm for Phase Transfer; use small_value to avoid 1/0 = NaN
+       alwc_vol_vol_a3(:) = max( 1.e-12_r8, qaerwat(:ncol, k, 3) * invariants(:ncol,k,inv_m_ndx) / avo * mbar(:ncol,k) ) ! fkm for Phase Transfer; use small_value to avoid 1/0 = NaN
+       
+       radius_cm_c(:) = drop_radius_um(:, k) *  1.e-4_r8 ! 10.0_r8  *  1.e-6_r8 ! fkm for Cloud reactions; from MG - liquid cloud drop radius in [um] * 1e4 -> cm
+       
+       radius_cm_a1(:) = 0.5_r8*dgncur_awet(1:ncol,k,1) * 1.e-2_r8   ! fkm for Phase Transfer; radius of wet aerosol = geometric mean wet diameter for number distribution (m -> cm)
+       radius_cm_a2(:) = 0.5_r8*dgncur_awet(1:ncol,k,2) * 1.e-2_r8   ! fkm for Phase Transfer; radius of wet aerosol = geometric mean wet diameter for number distribution (m -> cm)
+       radius_cm_a3(:) = 0.5_r8*dgncur_awet(1:ncol,k,3) * 1.e-2_r8   ! fkm for Phase Transfer; radius of wet aerosol = geometric mean wet diameter for number distribution (m -> cm)
+       
+       ! fkm for MOSAIC pH
+       pH_a1(:) = min( 14._r8, max(0._r8, pH_buf(1:ncol,k,1) ) )
+       pH_a2(:) = min( 14._r8, max(0._r8, pH_buf(1:ncol,k,2) ) )
+       pH_a3(:) = min( 14._r8, max(0._r8, pH_buf(1:ncol,k,3) ) )
+       
+       ! fkm for Phaes Transfer; converting the rates of n-th order reactions from M^(1-n) s^-1 to (molecules cm^-3)^(1-n) s^-1
+       conv_aq_rate_coeff_a1(:) = 1.e3_r8 / (avo * alwc_vol_vol_a1(:)) 
+       conv_aq_rate_coeff_a2(:) = 1.e3_r8 / (avo * alwc_vol_vol_a2(:))
+       conv_aq_rate_coeff_a3(:) = 1.e3_r8 / (avo * alwc_vol_vol_a3(:))
+
+       ! ----------------------------------------
+       ! WSY for Phase Transfer: phase-transfer on wet aerosols: SO2
+       ! ----------------------------------------
+       if ( g2a_SO2_a1_ndx>0 .or. a2g_SO2_a1_ndx>0 .or. &
+         g2a_SO2_a2_ndx>0 .or. a2g_SO2_a2_ndx>0 .or. &
+         g2a_SO2_a3_ndx>0 .or. a2g_SO2_a3_ndx>0 ) then
+         
+         id_gas   = get_spc_ndx( 'SO2' )
+         id_aq_a1 = get_spc_ndx( 'SIV_a1' )
+         id_aq_a2 = get_spc_ndx( 'SIV_a2' )
+         id_aq_a3 = get_spc_ndx( 'SIV_a3' )
+         MW_gas_kg_mol = 0.064066_r8
+         mass_accommodation_coeff = 0.035_r8
+         thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+         
+         do i = 1,ncol
+           
+           heff_M_atm_a1(i) = heff_acid_lookup("SO2             ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+           heff_M_atm_a2(i) = heff_acid_lookup("SO2             ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+           heff_M_atm_a3(i) = heff_acid_lookup("SO2             ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+         enddo
+         
+         rxt(:,k,g2a_SO2_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:)
+         rxt(:,k,a2g_SO2_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp(:,k) / R_atm_per_K_per_M
+         rxt(:,k,g2a_SO2_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+         rxt(:,k,a2g_SO2_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp(:,k) / R_atm_per_K_per_M
+         rxt(:,k,g2a_SO2_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+         rxt(:,k,a2g_SO2_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp(:,k) / R_atm_per_K_per_M
+         
+       end if
+       
+     ! ----------------------------------------
+     ! WSY for Phase Transfer: phase-transfer on wet aerosols: H2O2
+     ! ----------------------------------------
+     if ( g2a_H2O2_a1_ndx>0 .or. a2g_H2O2_a1_ndx>0 .or. &
+       g2a_H2O2_a2_ndx>0 .or. a2g_H2O2_a2_ndx>0 .or. &
+       g2a_H2O2_a3_ndx>0 .or. a2g_H2O2_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'H2O2' )
+       id_aq_a1 = get_spc_ndx( 'H2O2_a1' )
+       id_aq_a2 = get_spc_ndx( 'H2O2_a2' )
+       id_aq_a3 = get_spc_ndx( 'H2O2_a3' )
+       MW_gas_kg_mol = 0.0340147_r8
+       mass_accommodation_coeff = 0.018_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("H2O2            ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("H2O2            ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("H2O2            ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       rxt(:,k,g2a_H2O2_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:) * max( 0._r8, 1._r8 - cldfrc(:,k) )
+       rxt(:,k,a2g_H2O2_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:ncol,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_H2O2_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:) * max( 0._r8, 1._r8 - cldfrc(:,k) )
+       rxt(:,k,a2g_H2O2_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:ncol,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_H2O2_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:) * max( 0._r8, 1._r8 - cldfrc(:,k) )
+       rxt(:,k,a2g_H2O2_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:ncol,k) / R_atm_per_K_per_M
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Phase Transfer: phase-transfer on wet aerosols: OH
+     ! ----------------------------------------
+     if ( g2a_OH_a1_ndx>0 .or. a2g_OH_a1_ndx>0 .or. &
+       g2a_OH_a2_ndx>0 .or. a2g_OH_a2_ndx>0 .or. &
+       g2a_OH_a3_ndx>0 .or. a2g_OH_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'OH' )
+       id_aq_a1 = get_spc_ndx( 'OH_a1' )
+       id_aq_a2 = get_spc_ndx( 'OH_a2' )
+       id_aq_a3 = get_spc_ndx( 'OH_a3' )
+       MW_gas_kg_mol = 17.0067997e-3_r8
+       mass_accommodation_coeff = 0.001_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("OH              ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("OH              ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("OH              ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       rxt(:,k,g2a_OH_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:)
+       rxt(:,k,a2g_OH_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:ncol,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_OH_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+       rxt(:,k,a2g_OH_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:ncol,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_OH_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+       rxt(:,k,a2g_OH_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:ncol,k) / R_atm_per_K_per_M
+       
+       kt_OH_a1(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:))
+       kt_OH_a2(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:))
+       kt_OH_a3(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:))
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Phase Transfer: phase-transfer on wet aerosols: O3
+     ! ----------------------------------------
+     if ( g2a_O3_a1_ndx>0 .or. a2g_O3_a1_ndx>0 .or. &
+       g2a_O3_a2_ndx>0 .or. a2g_O3_a2_ndx>0 .or. &
+       g2a_O3_a3_ndx>0 .or. a2g_O3_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'O3' )
+       id_aq_a1 = get_spc_ndx( 'O3_a1' )
+       id_aq_a2 = get_spc_ndx( 'O3_a2' )
+       id_aq_a3 = get_spc_ndx( 'O3_a3' )
+       MW_gas_kg_mol = 47.9981995e-3_r8
+       mass_accommodation_coeff = 5.3e-4_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("OX              ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("OX              ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("OX              ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       ! write(iulog,*) 'before calculating rxt for g2a, a2g O3_a'
+       rxt(:,k,g2a_O3_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:) 
+       rxt(:,k,a2g_O3_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_O3_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+       rxt(:,k,a2g_O3_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_O3_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+       rxt(:,k,a2g_O3_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:,k) / R_atm_per_K_per_M
+       
+       kt_O3_a1(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:))
+       kt_O3_a2(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:))
+       kt_O3_a3(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:))
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Phase Transfer: phase-transfer on wet aerosols: DMS
+     ! ----------------------------------------
+     if ( g2a_DMS_a1_ndx>0 .or. a2g_DMS_a1_ndx>0 .or. &
+       g2a_DMS_a2_ndx>0 .or. a2g_DMS_a2_ndx>0 .or. &
+       g2a_DMS_a3_ndx>0 .or. a2g_DMS_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'DMS' )
+       id_aq_a1 = get_spc_ndx( 'DMS_a1' )
+       id_aq_a2 = get_spc_ndx( 'DMS_a2' )
+       id_aq_a3 = get_spc_ndx( 'DMS_a3' )
+       MW_gas_kg_mol = 62.1324e-3_r8
+       mass_accommodation_coeff = 0.05_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("DMS             ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("DMS             ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("DMS             ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+
+       ! write(iulog,*) 'before calculating rxt for g2a, a2g DMS_a'
+       rxt(:,k,g2a_DMS_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:)
+       rxt(:,k,a2g_DMS_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_DMS_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+       rxt(:,k,a2g_DMS_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_DMS_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+       rxt(:,k,a2g_DMS_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:,k) / R_atm_per_K_per_M
+       
+       kt_DMS_a1(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:))
+       kt_DMS_a2(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:))
+       kt_DMS_a3(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:))
+
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Phase Transfer: phase-transfer on wet aerosols: DMSO
+     ! ----------------------------------------
+     if ( g2a_DMSO_a1_ndx>0 .or. a2g_DMSO_a1_ndx>0 .or. &
+       g2a_DMSO_a2_ndx>0 .or. a2g_DMSO_a2_ndx>0 .or. &
+       g2a_DMSO_a3_ndx>0 .or. a2g_DMSO_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'DMSO' )
+       id_aq_a1 = get_spc_ndx( 'DMSO_a1' )
+       id_aq_a2 = get_spc_ndx( 'DMSO_a2' )
+       id_aq_a3 = get_spc_ndx( 'DMSO_a3' )
+       MW_gas_kg_mol = 78.13e-3_r8
+       mass_accommodation_coeff = 0.1_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("DMSO            ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("DMSO            ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("DMSO            ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       ! write(iulog,*) 'before calculating rxt for g2a, a2g DMSO_a'
+       rxt(:,k,g2a_DMSO_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:)
+       rxt(:,k,a2g_DMSO_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_DMSO_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+       rxt(:,k,a2g_DMSO_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_DMSO_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+       rxt(:,k,a2g_DMSO_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:,k) / R_atm_per_K_per_M
+       
+       kt_DMSO_a1(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:))
+       kt_DMSO_a2(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:))
+       kt_DMSO_a3(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:))
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Phase Transfer: phase-transfer on wet aerosols: MSIA
+     ! ----------------------------------------
+     if ( g2a_MSIA_a1_ndx>0 .or. a2g_MSIA_a1_ndx>0 .or. &
+       g2a_MSIA_a2_ndx>0 .or. a2g_MSIA_a2_ndx>0 .or. &
+       g2a_MSIA_a3_ndx>0 .or. a2g_MSIA_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'MSIA' )
+       id_aq_a1 = get_spc_ndx( 'MSIA_a1' )
+       id_aq_a2 = get_spc_ndx( 'MSIA_a2' )
+       id_aq_a3 = get_spc_ndx( 'MSIA_a3' )
+       MW_gas_kg_mol = 80.11e-3_r8
+       mass_accommodation_coeff = 0.1_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("MSIA            ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("MSIA            ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("MSIA            ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       ! write(iulog,*) 'before calculating rxt for g2a, a2g MSIA_a'
+       rxt(:,k,g2a_MSIA_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:)
+       rxt(:,k,a2g_MSIA_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_MSIA_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+       rxt(:,k,a2g_MSIA_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:,k) / R_atm_per_K_per_M 
+       rxt(:,k,g2a_MSIA_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+       rxt(:,k,a2g_MSIA_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:,k) / R_atm_per_K_per_M
+       
+       kt_MSIA_a1(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:))
+       kt_MSIA_a2(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:))
+       kt_MSIA_a3(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:))
+              
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Phase Transfer: phase-transfer on wet aerosols: MSA
+     ! ----------------------------------------
+     if ( g2a_MSA_a1_ndx>0 .or. a2g_MSA_a1_ndx>0 .or. &
+       g2a_MSA_a2_ndx>0 .or. a2g_MSA_a2_ndx>0 .or. &
+       g2a_MSA_a3_ndx>0 .or. a2g_MSA_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'MSA' )
+       id_aq_a1 = get_spc_ndx( 'MSA_a1' )
+       id_aq_a2 = get_spc_ndx( 'MSA_a2' )
+       id_aq_a3 = get_spc_ndx( 'MSA_a3' )
+       MW_gas_kg_mol = 96.10e-3_r8
+       mass_accommodation_coeff = 0.1_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("MSA             ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("MSA             ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("MSA             ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       ! write(iulog,*) 'before calculating rxt for g2a, a2g MSA_a'
+       rxt(:,k,g2a_MSA_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:)
+       rxt(:,k,a2g_MSA_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_MSA_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+       rxt(:,k,a2g_MSA_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_MSA_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+       rxt(:,k,a2g_MSA_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:,k) / R_atm_per_K_per_M
+       
+       kt_MSA_a1(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:))
+       kt_MSA_a2(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:))
+       kt_MSA_a3(:) = max( 0._r8, kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:))
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Phase Transfer: phase-transfer on wet aerosols: HOBR
+     ! ----------------------------------------
+     if ( g2a_HOBR_a1_ndx>0 .or. a2g_HOBR_a1_ndx>0 .or. &
+       g2a_HOBR_a2_ndx>0 .or. a2g_HOBR_a2_ndx>0 .or. &
+       g2a_HOBR_a3_ndx>0 .or. a2g_HOBR_a3_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'HOBR' )
+       id_aq_a1 = get_spc_ndx( 'HOBR_a1' )
+       id_aq_a2 = get_spc_ndx( 'HOBR_a2' )
+       id_aq_a3 = get_spc_ndx( 'HOBR_a3' )
+       MW_gas_kg_mol = 96.91e-3_r8
+       mass_accommodation_coeff = 0.6_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_a1(i) = heff_acid_lookup("HOBR            ", temp (i,k), pH_a1(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a2(i) = heff_acid_lookup("HOBR            ", temp (i,k), pH_a2(i), .true.)  ! make sure the lenth of the input string is 16
+         heff_M_atm_a3(i) = heff_acid_lookup("HOBR            ", temp (i,k), pH_a3(i), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       ! write(iulog,*) 'before calculating rxt for g2a, a2g HOBR_a'
+       rxt(:,k,g2a_HOBR_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a1(:)
+       rxt(:,k,a2g_HOBR_a1_ndx) = kt_s_wetaerosols(ncol, radius_cm_a1(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a1(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_HOBR_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a2(:)
+       rxt(:,k,a2g_HOBR_a2_ndx) = kt_s_wetaerosols(ncol, radius_cm_a2(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a2(:) / temp (:,k) / R_atm_per_K_per_M
+       rxt(:,k,g2a_HOBR_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_a3(:)
+       rxt(:,k,a2g_HOBR_a3_ndx) = kt_s_wetaerosols(ncol, radius_cm_a3(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_a3(:) / temp (:,k) / R_atm_per_K_per_M
+
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Cloud Reactions: phase-transfer to cloud-borne: DMS
+     ! ----------------------------------------
+     if ( g2c_DMS_c_ndx>0 .or. c2g_DMS_c_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'DMS' )
+       id_aq_c  = get_spc_ndx( 'DMS_c' )
+      ! faq_DMS(:) = small_value
+      
+       MW_gas_kg_mol = 62.1324e-3_r8
+       mass_accommodation_coeff = 0.05_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_c(i) = heff_acid_lookup("DMS             ", temp (i,k), cloud_ph(i,k), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       he_DMS(:) = heff_M_atm_c(:)
+       
+       faq_DMS(:) = heff_M_atm_c(:) * lwc(:) * temp (:,k) * R_atm_per_K_per_M   ! fkm: f_aq = distribution factor of aq/g from Seinfeld Eq (7.6)
+       
+       faq_DMS(:) = max( 0._r8, faq_DMS(:) ) ! fkm: to ensure faq is non-zero
+       
+       rxt(:,k,g2c_DMS_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_c(:)
+       rxt(:,k,c2g_DMS_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_c(:) / temp (:,k) / R_atm_per_K_per_M
+     
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Cloud Reactions: phase-transfer to cloud-borne: DMSO
+     ! ----------------------------------------
+     if ( g2c_DMSO_c_ndx>0 .or. c2g_DMSO_c_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'DMSO' )
+       id_aq_c  = get_spc_ndx( 'DMSO_c' )
+
+       MW_gas_kg_mol = 78.13e-3_r8
+       mass_accommodation_coeff = 0.1_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+
+       do i = 1,ncol
+         heff_M_atm_c(i) = heff_acid_lookup("DMSO            ", temp (i,k), cloud_ph(i,k), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       he_DMSO(:) = heff_M_atm_c(:)
+       
+       faq_DMSO(:) = heff_M_atm_c(:) * lwc(:) * temp (:,k) * R_atm_per_K_per_M   ! fkm: f_aq = distribution factor of aq/g from Seinfeld Eq (7.6)
+       
+       faq_DMSO(:) = max( 0._r8, faq_DMSO(:) ) ! fkm: to ensure faq is non-zero
+       
+       rxt(:,k,g2c_DMSO_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_c(:)
+       rxt(:,k,c2g_DMSO_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_c(:) / temp (:,k) / R_atm_per_K_per_M
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Cloud Reactions: phase-transfer to cloud-borne: MSIA
+     ! ----------------------------------------
+     if ( g2c_MSIA_c_ndx>0 .or. c2g_MSIA_c_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'MSIA' )
+       id_aq_c  = get_spc_ndx( 'MSIA_c' )
+
+       MW_gas_kg_mol = 80.11e-3_r8
+       mass_accommodation_coeff = 0.1_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+              
+       do i = 1,ncol
+         heff_M_atm_c(i) = heff_acid_lookup("MSIA            ", temp (i,k), cloud_ph(i,k), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       he_MSIA(:) = heff_M_atm_c(:)
+       
+       faq_MSIA(:) = heff_M_atm_c(:) * lwc(:) * temp (:,k) * R_atm_per_K_per_M   ! fkm: f_aq = distribution factor of aq/g from Seinfeld Eq (7.6)
+       
+       faq_MSIA(:) = max( 0._r8, faq_MSIA(:) ) ! fkm: to ensure faq is non-zero
+       
+       rxt(:,k,g2c_MSIA_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_c(:)
+       rxt(:,k,c2g_MSIA_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_c(:) / temp (:,k) / R_atm_per_K_per_M
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Cloud Reactions: phase-transfer to cloud-borne: MSA
+     ! ----------------------------------------
+     if ( g2c_MSA_c_ndx>0 .or. c2g_MSA_c_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'MSA' )
+       id_aq_c  = get_spc_ndx( 'MSA_c' )
+       
+       MW_gas_kg_mol = 96.10e-3_r8
+       mass_accommodation_coeff = 0.1_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+
+       do i = 1,ncol
+         heff_M_atm_c(i) = heff_acid_lookup("MSA             ", temp (i,k), cloud_ph(i,k), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       he_MSA(:) = heff_M_atm_c(:)
+       
+       faq_MSA(:) = heff_M_atm_c(:) * lwc(:) * temp (:,k) * R_atm_per_K_per_M   ! fkm: f_aq = distribution factor of aq/g from Seinfeld Eq (7.6)
+       
+       faq_MSA(:) = max( 0._r8, faq_MSA(:) ) ! fkm: to ensure faq is non-zero
+       
+       rxt(:,k,g2c_MSA_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_c(:)
+       rxt(:,k,c2g_MSA_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_c(:) / temp (:,k) / R_atm_per_K_per_M
+
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Cloud Reactions: phase-transfer to cloud-borne: OH
+     ! ----------------------------------------
+     if ( g2c_OH_c_ndx>0 .or. c2g_OH_c_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'OH' )
+       id_aq_c  = get_spc_ndx( 'OH_c' )
+       
+       MW_gas_kg_mol = 17.0067997e-3_r8
+       mass_accommodation_coeff = 0.001_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_c(i) = heff_acid_lookup("OH              ", temp (i,k), cloud_ph(i,k), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       he_OH(:) = heff_M_atm_c(:)
+       
+       faq_OH(:) = heff_M_atm_c(:) * lwc(:) * temp (:,k) * R_atm_per_K_per_M   ! fkm: f_aq = distribution factor of aq/g from Seinfeld Eq (7.6)
+       
+       faq_OH(:) = max( 0._r8, faq_OH(:) ) ! fkm: to ensure faq is non-zero
+       
+       rxt(:,k,g2c_OH_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_c(:)
+       rxt(:,k,c2g_OH_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_c(:) / temp (:,k) / R_atm_per_K_per_M
+       
+     end if
+     
+     ! ----------------------------------------
+     ! fkm for Cloud Reactions: phase-transfer to cloud-borne: O3
+     ! ----------------------------------------
+     if ( g2c_O3_c_ndx>0 .or. c2g_O3_c_ndx>0 ) then
+       
+       id_gas   = get_spc_ndx( 'O3' )
+       id_aq_c  = get_spc_ndx( 'O3_c' )
+       
+       MW_gas_kg_mol = 47.9981995e-3_r8
+       mass_accommodation_coeff = 5.3e-4_r8
+       thermalspeed_cm_s(:) = 100.0_r8 * sqrt(8.0_r8 * 8.314_r8 * temp (:ncol,k) / 3.14159_r8 / MW_gas_kg_mol)
+       
+       do i = 1,ncol
+         heff_M_atm_c(i) = heff_acid_lookup("OX              ", temp (i,k), cloud_ph(i,k), .true.)  ! make sure the lenth of the input string is 16
+       enddo
+       
+       he_O3(:) = heff_M_atm_c(:)
+       
+       faq_O3(:) = heff_M_atm_c(:) * lwc(:) * temp (:,k) * R_atm_per_K_per_M   ! fkm: f_aq = distribution factor of aq/g from Seinfeld Eq (7.6)
+       
+       faq_O3(:) = max( 0._r8, faq_O3(:) ) ! fkm: to ensure faq is non-zero
+       
+       rxt(:,k,g2c_O3_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) * alwc_vol_vol_c(:)
+       rxt(:,k,c2g_O3_c_ndx) = kt_s_wetaerosols(ncol, radius_cm_c(:), dg, thermalspeed_cm_s(:), mass_accommodation_coeff) / heff_M_atm_c(:) / temp (:,k) / R_atm_per_K_per_M
+
+     end if
+     
+     ! ===================================================================================
+     ! FKM for Cloud Reactions
+     ! DMS + O3 -> DMSO
+     ! ===================================================================================
+     if ( DMS_O3_c_ndx>0 ) then
+       
+       do i = 1,ncol
+
+        rxt(i,k,DMS_O3_c_ndx) = k_DMS_O3_M_s(cloud_ph(i,k), temp (i,k))  &
+                                 * conv_aq_rate_coeff_c(i)
+       end do
+       
+     end if
+     
+     ! ===================================================================================
+     ! FKM for Cloud Reactions
+     ! DMSO + OH -> MSIA
+     ! ===================================================================================
+     if ( DMSO_OH_c_ndx>0 ) then
+     
+       do i = 1,ncol
+         rxt(i,k,DMSO_OH_c_ndx) = k_DMSO_OH_M_s(cloud_ph(i,k), temp (i,k))  &
+                                  * conv_aq_rate_coeff_c(i)
+       end do
+     
+     end if
+     
+     ! ===================================================================================
+     ! FKM for Cloud Reactions
+     ! MSIA + OH -> MSA
+     ! MSI- + OH -> MSA
+     ! ===================================================================================
+     if ( MSIA_OH_c_ndx>0 ) then
+     
+       do i = 1,ncol
+
+          rxt(i,k,MSIA_OH_c_ndx) = k_MSIA_OH_M_s(cloud_ph(i,k), temp (i,k))  &
+                                   * conv_aq_rate_coeff_c(i)
+                                  
+       end do
+     
+     end if
+     
+     ! ===================================================================================
+     ! FKM for Cloud Reactions
+     ! MSIA + O3 -> MSA
+     ! MSI- + O3 -> MS-
+     ! ===================================================================================
+     if ( MSIA_O3_c_ndx>0 ) then
+     
+       do i = 1,ncol
+         
+         rxt(i,k,MSIA_O3_c_ndx) = k_MSIA_O3_M_s(cloud_ph(i,k), temp (i,k))  &
+                                  * conv_aq_rate_coeff_c(i) 
+       end do
+     
+     end if
+     
+     ! ===================================================================================
+     ! FKM for Cloud Reactions
+     ! MSIA + O3 -> MSA
+     ! MSI- + O3 -> MS-
+     ! ===================================================================================
+     if ( MSA_OH_c_ndx>0 ) then
+     
+       do i = 1,ncol
+         
+         rxt(i,k,MSA_OH_c_ndx) = k_MSA_OH_M_s(cloud_ph(i,k), temp (i,k))  &
+                                  * conv_aq_rate_coeff_c(i) 
+       end do
+     
+     end if
+   
+   ! ==================================================================================
+   ! WSY for Phase Transfer: aqueous-phase reactions on wet aerosols: H2O2
+   ! Siyuan Wang (siyuan@ucar.edu)
+   ! NOTE: Unit conversion may be needed!!!
+   !       For most aqueous-phase reaction, the rate coefficients are in M^(1-n) s^-1
+   !       where n is the reaction order.
+   !       But when solving the ODEs, the units should all be in (molec/cm^3)^(1-n) s^-1
+   !       That is, if the reaction is 1st order, e.g., H2O2(aq) + hv = 2 OH(aq), 
+   !       no unit conversion is needed. 
+   !       For n-th order reactions, this conversion factor is needed!!! e.g.,
+   !       2nd reaction:                      1/conv_aq_rate_coeff_a1
+   !       3rd reaction:                      1/conv_aq_rate_coeff_a1/conv_aq_rate_coeff_a1
+   ! ===================================================================================
+
+   if ( alwc_SIV_H2O2_a1_ndx>0 .or. alwc_SIV_H2O2_a2_ndx>0 .or. alwc_SIV_H2O2_a3_ndx>0 ) then
+
+     do i = 1,ncol
+       rxt(i,k,alwc_SIV_H2O2_a1_ndx) = k_H2O2_SO2_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,alwc_SIV_H2O2_a2_ndx) = k_H2O2_SO2_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,alwc_SIV_H2O2_a3_ndx) = k_H2O2_SO2_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
+   
+   ! ===================================================================================
+   ! FKM for Phase transfer: aqueous-phase reactions on wet aerosols:
+   ! DMS + O3 -> DMSO
+   ! ===================================================================================
+   if ( DMS_O3_a1_ndx>0 .or. DMS_O3_a2_ndx>0 .or. DMS_O3_a3_ndx>0 ) then
+     
+     do i = 1,ncol
+       rxt(i,k,DMS_O3_a1_ndx) = k_DMS_O3_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,DMS_O3_a2_ndx) = k_DMS_O3_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,DMS_O3_a3_ndx) = k_DMS_O3_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
+   
+   ! ===================================================================================
+   ! FKM for Phase transfer: aqueous-phase reactions on wet aerosols:
+   ! DMSO + OH -> MSIA
+   ! ===================================================================================
+   if ( DMSO_OH_a1_ndx>0 .or. DMSO_OH_a2_ndx>0 .or. DMSO_OH_a3_ndx>0 ) then
+     
+     do i = 1,ncol
+       rxt(i,k,DMSO_OH_a1_ndx) = k_DMSO_OH_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,DMSO_OH_a2_ndx) = k_DMSO_OH_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,DMSO_OH_a3_ndx) = k_DMSO_OH_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
+   
+   ! ===================================================================================
+   ! FKM for Phase transfer: aqueous-phase reactions on wet aerosols:
+   ! MSIA + OH -> MSA
+   ! MSI- + OH -> MSA
+   ! ===================================================================================
+   if ( MSIA_OH_a1_ndx>0 .or. MSIA_OH_a2_ndx>0 .or. MSIA_OH_a3_ndx>0 ) then
+     
+     do i = 1,ncol
+       rxt(i,k,MSIA_OH_a1_ndx) = k_MSIA_OH_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,MSIA_OH_a2_ndx) = k_MSIA_OH_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,MSIA_OH_a3_ndx) = k_MSIA_OH_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
+   
+   ! ===================================================================================
+   ! FKM for Phase transfer: aqueous-phase reactions on wet aerosols:
+   ! MSIA + O3 -> MSA
+   ! MSI- + O3 -> MS-
+   ! ===================================================================================
+   if ( MSIA_O3_a1_ndx>0 .or. MSIA_O3_a2_ndx>0 .or. MSIA_O3_a3_ndx>0 ) then
+     
+     do i = 1,ncol
+       rxt(i,k,MSIA_O3_a1_ndx) = k_MSIA_O3_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,MSIA_O3_a2_ndx) = k_MSIA_O3_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,MSIA_O3_a3_ndx) = k_MSIA_O3_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
+   
+   ! ===================================================================================
+   ! FKM for Phase transfer: aqueous-phase reactions on wet aerosols:
+   ! MSIA + O3 -> MSA
+   ! MSI- + O3 -> MS-
+   ! ===================================================================================
+   if ( MSA_OH_a1_ndx>0 .or. MSA_OH_a2_ndx>0 .or. MSA_OH_a3_ndx>0 ) then
+     
+     do i = 1,ncol
+       rxt(i,k,MSA_OH_a1_ndx) = k_MSA_OH_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,MSA_OH_a2_ndx) = k_MSA_OH_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,MSA_OH_a3_ndx) = k_MSA_OH_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
+   
+   ! ===================================================================================
+   ! FKM for Phase transfer: aqueous-phase reactions on wet aerosols:
+   ! HSO3- + HOBR -> SO4 + 2H + Br
+   ! SO3-- + HOBR -> SO4 + 2H + Br
+   ! ===================================================================================
+   if ( SIV_HOBR_a1_ndx>0 .or. SIV_HOBR_a2_ndx>0 .or. SIV_HOBR_a3_ndx>0 ) then
+     
+     do i = 1,ncol
+       rxt(i,k,SIV_HOBR_a1_ndx) = k_SIV_HOBR_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,SIV_HOBR_a2_ndx) = k_SIV_HOBR_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,SIV_HOBR_a3_ndx) = k_SIV_HOBR_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
+   
+   ! ===================================================================================
+   ! FKM for Phase transfer: aqueous-phase reactions on wet aerosols:
+   ! HSO3- + O3 -> SO4 + O2 + H+
+   ! SO3-- + O3 -> SO4 + O2
+   ! ===================================================================================
+   if ( SIV_O3_a1_ndx>0 .or. SIV_O3_a2_ndx>0 .or. SIV_O3_a3_ndx>0 ) then
+     
+     do i = 1,ncol
+       rxt(i,k,SIV_O3_a1_ndx) = k_SIV_O3_M_s(pH_a1(i), temp (i,k)) * conv_aq_rate_coeff_a1(i)
+       rxt(i,k,SIV_O3_a2_ndx) = k_SIV_O3_M_s(pH_a2(i), temp (i,k)) * conv_aq_rate_coeff_a2(i)
+       rxt(i,k,SIV_O3_a3_ndx) = k_SIV_O3_M_s(pH_a3(i), temp (i,k)) * conv_aq_rate_coeff_a3(i)
+     end do
+     
+   end if
 
 !-----------------------------------------------------------------
 !	... o + o2 + m --> o3 + m (JPL15-10)
@@ -992,15 +1774,15 @@ contains
 !	... mpan + m --> mco3 + no2 + m (JPL15-10)
 !-----------------------------------------------------------------
        if( usr_MPAN_M_ndx > 0 ) then
-          if( tag_MCO3_NO2_ndx > 0 ) then
-             rxt(:,k,usr_MPAN_M_ndx) = rxt(:,k,tag_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          if( usr_MCO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_MPAN_M_ndx) = rxt(:,k,usr_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
           else
              rxt(:,k,usr_MPAN_M_ndx) = 0._r8
           end if
        end if
        if( usr_XMPAN_M_ndx > 0 ) then
-          if( tag_MCO3_NO2_ndx > 0 ) then
-             rxt(:,k,usr_XMPAN_M_ndx) = rxt(:,k,tag_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
+          if( usr_MCO3_NO2_ndx > 0 ) then
+             rxt(:,k,usr_XMPAN_M_ndx) = rxt(:,k,usr_MCO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
           else
              rxt(:,k,usr_XMPAN_M_ndx) = 0._r8
           end if
@@ -1017,36 +1799,7 @@ contains
              rxt(:,k,usr_PBZNIT_M_ndx) = 0._r8
           end if
        end if
-!-----------------------------------------------------------------
-!       ... TERPAPAN + m --> TERPACO3 + no2 + m
-!-----------------------------------------------------------------
-       if( usr_TERPAPAN_M_ndx > 0 ) then
-          if( tag_TERPACO3_NO2_ndx > 0 ) then
-             rxt(:,k,usr_TERPAPAN_M_ndx) = rxt(:,k,tag_TERPACO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
-          else
-             rxt(:,k,usr_TERPAPAN_M_ndx) = 0._r8
-          end if
-       end if
-!-----------------------------------------------------------------
-!       ... TERPA2PAN + m --> TERPA2CO3 + no2 + m
-!-----------------------------------------------------------------
-       if( usr_TERPA2PAN_M_ndx > 0 ) then
-          if( tag_TERPA2CO3_NO2_ndx > 0 ) then
-             rxt(:,k,usr_TERPA2PAN_M_ndx) = rxt(:,k,tag_TERPA2CO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
-          else
-             rxt(:,k,usr_TERPA2PAN_M_ndx) = 0._r8
-          end if
-       end if
-!-----------------------------------------------------------------
-!       ... TERPA3PAN + m --> TERPA3CO3 + no2 + m
-!-----------------------------------------------------------------
-       if( usr_TERPA3PAN_M_ndx > 0 ) then
-          if( tag_TERPA3CO3_NO2_ndx > 0 ) then
-             rxt(:,k,usr_TERPA3PAN_M_ndx) = rxt(:,k,tag_TERPA3CO3_NO2_ndx) * 1.111e28_r8 * exp_fac(:)
-          else
-             rxt(:,k,usr_TERPA3PAN_M_ndx) = 0._r8
-          end if
-       end if
+
 !-----------------------------------------------------------------
 !       ... xooh + oh -> h2o + oh
 !-----------------------------------------------------------------
@@ -1074,374 +1827,49 @@ contains
        end if
 
 !-----------------------------------------------------------------
+!       ... DMS + OH  --> .5 * SO2 + .4 * DMSO + CH3O2    ! added by fkm for DMS intermediates
+!-----------------------------------------------------------------
+      if( usr_DMS_OHb_ndx > 0 ) then
+          o2(:ncol) = invariants(:ncol,k,inv_o2_ndx)
+          call comp_exp( exp_fac, 3644._r8*tinv, ncol )
+          ko(:) = 1._r8 + 1.05e-5_r8 * o2(:) / m(:,k) * exp_fac
+          call comp_exp( exp_fac, 5376._r8*tinv, ncol )
+          rxt(:,k,usr_DMS_OHb_ndx) = 8.2e-39_r8 * o2(:) * exp_fac / ko(:)
+      end if
+      
+      
+!-----------------------------------------------------------------
+!       ... MSP   -->  •OOCH2SCH2OOH    ! added by fkm for iso pathway
+!-----------------------------------------------------------------
+      if( usr_is_shift_1_ndx > 0 ) then
+          rxt(:,k,usr_is_shift_1_ndx) = 2.24e11_r8 * exp(-9.8e3_r8 * tinv) * exp(1.03e8_r8 * tinv**3._r8)  ! fkm: k_iso = 0.04 s–1 at 293 K
+          ! rxt(:,k,usr_is_shift_1_ndx) = 6.77809e11_r8 * exp(-9.8e3_r8 * tinv) * exp(1.03e8_r8 * tinv**3._r8) ! fkm: k_iso = 0.14 s-1 at 295 K by Jesse 
+      end if
+      
+!-----------------------------------------------------------------
+!       ... •OOCH2SCH2OOH  --> HPMTF (HOOCH2SCHO) + OH    ! added by fkm for iso pathway
+!-----------------------------------------------------------------
+      if( usr_is_shift_2_ndx > 0 ) then
+        rxt(:,k,usr_is_shift_2_ndx) = 6.09e11_r8 * exp(-9.5e3_r8 * tinv) * exp(1.10e8_r8 * tinv**3._r8)
+      end if
+      
+!-----------------------------------------------------------------
+!       ... HPMTF  +   cloud --> sink    ! added by fkm for HPMTF uptake
+!-----------------------------------------------------------------
+      if( usr_is_HPMTF_cloud_ndx > 0 ) then
+        rxt(:,k,usr_is_HPMTF_cloud_ndx) = 5.0e-5_r8 * cldfrc(:, k)
+      end if
+
+!-----------------------------------------------------------------
 !       ... SO2 + OH  --> SO4  (REFERENCE?? - not Liao)
 !-----------------------------------------------------------------
        if( usr_SO2_OH_ndx > 0 ) then
           fc(:) = 3.0e-31_r8 *(300._r8*tinv(:))**3.3_r8
           ko(:) = fc(:)*m(:,k)/(1._r8 + fc(:)*m(:,k)/1.5e-12_r8)
           rxt(:,k,usr_SO2_OH_ndx) = ko(:)*.6_r8**(1._r8 + (log10(fc(:)*m(:,k)/1.5e-12_r8))**2._r8)**(-1._r8)
-       end if
-!RHS TS2
-!-----------------------------------------------------------------
-!       ... ISOPZD1O2 --> HPALD etc. Wennberg 2018 for rate
-!-----------------------------------------------------------------
-       if( usr_ISOPZD1O2_ndx > 0 ) then
-          call comp_exp( exp_fac, -12200._r8*tinv, ncol )
-          ko(:) = 5.05e15_r8 * exp_fac(:)
-          call comp_exp( exp_fac, 1.e8_r8*tinv**3._r8, ncol )
-          rxt(:,k,usr_ISOPZD1O2_ndx) = ko(:)*exp_fac(:)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPZD4O2 --> HPALD etc. Wennberg 2018 for rate
-!-----------------------------------------------------------------
-       if( usr_ISOPZD4O2_ndx > 0 ) then
-          call comp_exp( exp_fac, -7160._r8*tinv, ncol )
-          ko(:) = 2.22e9_r8 * exp_fac(:)
-          call comp_exp( exp_fac, 1.e8_r8*tinv**3._r8, ncol )
-          rxt(:,k,usr_ISOPZD4O2_ndx) = ko(:)*exp_fac(:)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPB1O2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPB1O2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.14_r8)/0.14_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPB1O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPB1O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPB4O2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPB4O2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.13_r8)/0.13_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPB4O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPB4O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPED1O2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPED1O2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.12_r8)/0.12_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-        rxt(:,k,usr_ISOPED1O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-        rxt(:,k,usr_ISOPED1O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPED4O2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPED4O2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.12_r8)/0.12_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPED4O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPED4O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPZD1O2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPZD1O2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.12_r8)/0.12_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPZD1O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPZD1O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPZD4O2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPZD4O2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.12_r8)/0.12_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPZD4O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPZD4O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPNO3_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPNO3_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.135_r8)/0.135_r8
-          natom = 9.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPNO3_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPNO3_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... MVKO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_MVKO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.04_r8)/0.04_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_MVKO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_MVKO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... MACRO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_MACRO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.06_r8)/0.06_r8
-          natom = 6.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-        rxt(:,k,usr_MACRO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-        rxt(:,k,usr_MACRO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... IEPOXOO_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_IEPOXOO_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.025_r8)/0.025_r8
-          natom = 8.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_IEPOXOO_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_IEPOXOO_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPN1DO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPN1DO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.084_r8)/0.084_r8
-          natom = 11.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPN1DO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPN1DO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPN2BO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPN2BO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.065_r8)/0.065_r8
-          natom = 11.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-        rxt(:,k,usr_ISOPN2BO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-        rxt(:,k,usr_ISOPN2BO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPN3BO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPN3BO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.053_r8)/0.053_r8
-          natom = 11.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPN3BO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPN3BO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPN4DO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPN4DO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.165_r8)/0.165_r8
-          natom = 11.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPN4DO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPN4DO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPNBNO3O2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPNBNO3O2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.203_r8)/0.203_r8
-          natom = 11.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPNBNO3O2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPNBNO3O2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPNOOHBO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPNOOHBO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.141_r8)/0.141_r8
-          natom = 12.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPNOOHBO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPNOOHBO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... ISOPNOOHDO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_ISOPNOOHDO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.045_r8)/0.045_r8
-          natom = 12.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_ISOPNOOHDO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_ISOPNOOHDO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
-!-----------------------------------------------------------------
-!       ... NC4CHOO2_NOn Temp/Pressure Dependent Nitrate Yield
-!-----------------------------------------------------------------
-       if( usr_NC4CHOO2_NOn_ndx > 0 ) then
-          nyield = (1._r8-0.021_r8)/0.021_r8
-          natom = 11.0_r8
-          exp_natom = exp( natom )
-          acorr = (2.0e-22_r8*exp_natom*2.45e19_r8)/(1._r8+((2.0e-22_r8* &
-                      exp_natom*2.45e19_r8)/(0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*2.45e19_r8)/ &
-                      (0.43_r8*(298._r8*(1._r8/293._r8))**8._r8)))**2._r8))
-          aterm(:) = (2.0e-22_r8*exp_natom*m(:,k))/(1._r8+((2.0e-22_r8* &
-                      exp_natom*m(:,k))/(0.43_r8*(298._r8*tinv(:))**8._r8)))* &
-                      0.41_r8**(1._r8/(1._r8+(log10((2.0e-22_r8*exp_natom*m(:,k))/ &
-                      (0.43_r8*(298._r8*tinv(:))**8._r8)))**2._r8))
-          call comp_exp( exp_fac, 360._r8*tinv, ncol )
-          rxt(:,k,usr_NC4CHOO2_NOn_ndx) = 2.7e-12_r8 * exp_fac(:)*aterm(:)/(aterm(:)+acorr*nyield)
-          rxt(:,k,usr_NC4CHOO2_NOa_ndx) = 2.7e-12_r8 * exp_fac(:)*acorr*nyield/(aterm(:)+acorr*nyield)
-       end if
+        end if
+
+
 !
 ! reduced hydrocarbon scheme
 !
@@ -1488,30 +1916,7 @@ contains
              c_nterpooh = 0.957e3_r8 * sqrt_t(i)        ! mean molecular speed of nterpooh
              c_nc4cho   = 1.21e3_r8 * sqrt_t(i)         ! mean molecular speed of nc4cho
              c_nc4ch2oh = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of nc4ch2oh
-             c_isopfdn  = 9.68e2_r8 * sqrt_t(i)         ! mean molecular speed of isopfdn
-             c_isopfnp  = 1.04e3_r8 * sqrt_t(i)         ! mean molecular speed of isopfnp
-             c_isopn2b  = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of isopn2
-             c_isopn1d  = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of isopn1d
-             c_isopn4d  = 1.20e3_r8 * sqrt_t(i)         ! mean molecular speed of isopn4d
-             c_inoohd   = 1.14e3_r8 * sqrt_t(i)         ! mean molecular speed of inoohd
-             c_inheb    = 1.14e3_r8 * sqrt_t(i)         ! mean molecular speed of inheb
-             c_inhed    = 1.14e3_r8 * sqrt_t(i)         ! mean molecular speed of inhed
-             c_macrn    = 1.19e3_r8 * sqrt_t(i)         ! mean molecular speed of macrn
-             c_isophfp  = 1.19e3_r8 * sqrt_t(i)         ! mean molecular speed of isophfp
-             c_iepox    = 1.34e3_r8 * sqrt_t(i)         ! mean molecular speed of iepox
-             c_dhpmpal  = 1.24e3_r8 * sqrt_t(i)         ! mean molecular speed of dhpmpal
-             c_iche     = 1.35e3_r8 * sqrt_t(i)         ! mean molecular speed of iche
-             c_isopfnc  = 1.04e3_r8 * sqrt_t(i)         ! mean molecular speed of isopfnc
-             c_isopfdnc = 9.72e2_r8 * sqrt_t(i)         ! mean molecular speed of isopfdnc
-             c_terpnt   = 9.92e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnt
-             c_terpnt1  = 9.92e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnt1
-             c_terpnpt  = 9.57e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnpt
-             c_terpnpt1 = 9.57e2_r8 * sqrt_t(i)         ! mean molecular speed of terpnpt1
-             c_terpfdn  = 8.48e2_r8 * sqrt_t(i)         ! mean molecular speed of terpfdn
-             c_sqtn     = 8.64e2_r8 * sqrt_t(i)         ! mean molecular speed of sqtn
-             c_terphfn  = 8.93e2_r8 * sqrt_t(i)         ! mean molecular speed of terphfn
-             c_terpdhdp = 9.47e2_r8 * sqrt_t(i)         ! mean molecular speed of terpdhdp
-             c_terpacid = 1.07e3_r8 * sqrt_t(i)         ! mean molecular speed of terpacid
+
              !-------------------------------------------------------------------------
              !  Heterogeneous reaction rates for uptake of a gas on an aerosol:
              !    rxt = sfc / ( (rad_aer/Dg_gas) + (4/(c_gas*gamma_gas)))
@@ -1608,150 +2013,6 @@ contains
              if( usr_NC4CH2OH_aer_ndx > 0 ) then
                 rxt(i,k,usr_NC4CH2OH_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_nc4ch2oh, gamma_nc4ch2oh )
              end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPFDN -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPFDN_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPFDN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfdn, gamma_isopfdn )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPFNP ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPFNP_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPFNP_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfnp, gamma_isopfnp )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPN2B -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPN2B_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPN2B_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopn2b, gamma_isopn2b )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPN1D -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPN1D_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPN1D_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopn1d, gamma_isopn1d )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPN4D -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPN4D_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPN4D_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopn4d, gamma_isopn4d )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  INOOHD -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_INOOHD_aer_ndx > 0 ) then
-                rxt(i,k,usr_INOOHD_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_inoohd, gamma_inoohd )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  INHEB -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_INHEB_aer_ndx > 0 ) then
-                rxt(i,k,usr_INHEB_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_inheb, gamma_inheb )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  INHED -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_INHED_aer_ndx > 0 ) then
-                rxt(i,k,usr_INHED_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_inhed, gamma_inhed )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  MACRN -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_MACRN_aer_ndx > 0 ) then
-                rxt(i,k,usr_MACRN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_macrn, gamma_macrn )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPHFP ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPHFP_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPHFP_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isophfp, gamma_isophfp )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  IEPOX ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_IEPOX_aer_ndx > 0 ) then
-                rxt(i,k,usr_IEPOX_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_iepox, gamma_iepox )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  DHPMPAL ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_DHPMPAL_aer_ndx > 0 ) then
-                rxt(i,k,usr_DHPMPAL_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_dhpmpal, gamma_dhpmpal )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ICHE ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ICHE_aer_ndx > 0 ) then
-                rxt(i,k,usr_ICHE_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_iche, gamma_iche )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPFNC ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPFNC_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPFNC_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfnc, gamma_isopfnc )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  ISOPFDNC ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_ISOPFDNC_aer_ndx > 0 ) then
-                rxt(i,k,usr_ISOPFDNC_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_isopfdnc, gamma_isopfdnc )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPNT -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPNT_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPNT_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnt, gamma_terpnt )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPNT1 -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPNT1_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPNT1_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnt1, gamma_terpnt1 )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPNPT -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPNPT_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPNPT_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnpt, gamma_terpnpt )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPNPT1 -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPNPT1_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPNPT1_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpnpt1, gamma_terpnpt1 )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPFDN -> HNO3 (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPFDN_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPFDN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpfdn, gamma_terpfdn )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  SQTN ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_SQTN_aer_ndx > 0 ) then
-                rxt(i,k,usr_SQTN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_sqtn, gamma_sqtn )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPHFN ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPHFN_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPHFN_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terphfn, gamma_terphfn )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPDHDP ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPDHDP_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPDHDP_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpdhdp, gamma_terpdhdp )
-             end if
-             !-------------------------------------------------------------------------
-             ! 	...  TERPACID ->  (on sulfate, nh4no3, oc2, soa)
-             !-------------------------------------------------------------------------
-             if( usr_TERPACID_aer_ndx > 0 ) then
-                rxt(i,k,usr_TERPACID_aer_ndx) = hetrxtrate( sfc, dm_aer, dg, c_terpacid, gamma_terpacid )
-             end if
 
           end do long_loop
        end if
@@ -1763,10 +2024,10 @@ contains
        !-----------------------------------------------------------------------
        if ( usr_oh_co_ndx > 0 ) then
           ko(:)     = 5.9e-33_r8 * tp(:)**1.4_r8
-          kinf(:)   = 1.1e-12_r8 * (temp(:ncol,k) / 300._r8)**1.3_r8
+          kinf(:)   = 1.1e-12_r8 * (temp(:,k) / 300._r8)**1.3_r8
           ko_m(:)   = ko(:) * m(:,k)
-          k0(:)     = 1.5e-13_r8 * (temp(:ncol,k) / 300._r8)**0.6_r8
-          kinf_m(:) = (2.1e+09_r8 * (temp(:ncol,k) / 300._r8)**6.1_r8) / m(:,k)
+          k0(:)     = 1.5e-13_r8 * (temp(:,k) / 300._r8)**0.6_r8
+          kinf_m(:) = (2.1e+09_r8 * (temp(:,k) / 300._r8)**6.1_r8) / m(:,k)
           rxt(:,k,usr_oh_co_ndx) = (ko_m(:)/(1._r8+(ko_m(:)/kinf(:)))) * &
                0.6_r8**(1._r8/(1._r8+(log10(ko_m(:)/kinf(:)))**2._r8)) + &
                (k0(:)/(1._r8+(k0(:)/kinf_m(:)))) * &
@@ -1786,6 +2047,7 @@ contains
           rxt(:,k,usr_oh_dms_ndx) = 2.000e-10_r8 * exp(5820.0_r8 * tinv(:)) / &
                ((2.000e29_r8 / o2(:)) + exp(6280.0_r8 * tinv(:)))
        endif
+       
        if ( aq_so2_h2o2_ndx > 0 .or. aq_so2_o3_ndx > 0 ) then
           lwc(:) = cwat(:ncol,k) * invariants(:ncol,k,inv_m_ndx) * mbar(:ncol,k) /avo !PJC convert kg/kg to g/cm3
           !-----------------------------------------------------------------------
@@ -1805,6 +2067,7 @@ contains
 
                   (1.0e+00_r8 + 13.0e+00_r8 * 10.0e+00_r8**(-pH))
           endif
+          
           !-----------------------------------------------------------------------
           !     ... SO2 + O3 --> S(VI)
           !-----------------------------------------------------------------------
@@ -1827,6 +2090,7 @@ contains
                   ((1.0e+00_r8 / 298.0e+00_r8) - tinv(:))) * &
                   (R_CONC * temp(:ncol,k))**2.0e+00_r8
           endif
+
        endif
 
     if ( has_d_chem ) then
@@ -1935,7 +2199,7 @@ contains
 	   where( tp(:ncol) < trlim3 )
 		  rxt(:,k,ion3_ndx)  = 1.4e-10_r8 * tp(:)**.44_r8
 		  rxt(:,k,ion11_ndx) = 1.e-11_r8 * tp(:)**.23_r8
-           elsewhere
+       elsewhere
 		  rxt(:,k,ion3_ndx)  = 5.2e-11_r8 / tp(:)**.2_r8
 	      rxt(:,k,ion11_ndx) = 3.6e-12_r8 / tp(:)**.41_r8
 	   end where
@@ -2003,7 +2267,7 @@ contains
 !	... use this n2o5 -> 2*hno3 only in tropopause
 !-----------------------------------------------------------------
 	    rxt(:,k,het1_ndx) = rxt(:,k,het1_ndx) &
-                                +.25_r8 * gam1 * sur(:) * 1.40e3_r8 * sqrt( temp(:ncol,k) )
+                                +.25_r8 * gam1 * sur(:) * 1.40e3_r8 * sqrt( temp(:,k) )
          end do
       end if
 
@@ -2325,6 +2589,275 @@ contains
     deallocate(rxt)
 
   endfunction hetrxtrate_gly
-
-
+  
+  ! ------------------------------------------------
+  ! WSY: Phase-transfer coefficient, on wet aerosols
+  ! Siyuan Wang (siyuan@ucar.edu)
+  ! ------------------------------------------------
+  function kt_s_wetaerosols(ncol, radius_cm, dg_cm2_s, c_cm_s, alpha)
+    
+    real(r8), intent(in) :: radius_cm(ncol)        ! particle rdius (cm)
+    real(r8), intent(in) :: dg_cm2_s               ! gas-phase diffusion coefficient (cm2/s)
+    real(r8), intent(in) :: c_cm_s(ncol)           ! thermal speed (cm/s)
+    real(r8), intent(in) :: alpha                  ! mass accommodation coefficient (dimension-less)
+    
+    real(r8)             :: kt_s_wetaerosols(ncol) ! phase-transfer coefficient (s^-1)
+    
+    integer              :: ncol                   ! col index
+    
+    kt_s_wetaerosols = 1._r8/(radius_cm*radius_cm/3._r8/dg_cm2_s + (4._r8/3._r8)*radius_cm/c_cm_s/alpha)
+    
+  endfunction kt_s_wetaerosols
+  
+  ! ---------------------------------------------------------------------  
+  ! WSY: this calculates the effective Henry's law constant for a acidity
+  !      using the Henry's law constant look-up table in seq_drydep_mod
+  !      for bases, formulation is slightly different, see:
+  !      https://wiki.ucar.edu/display/camchem/Updating+Gas-Phase+Chemistry
+  ! Siyuan Wang (siyuan@ucar.edu)
+  ! ---------------------------------------------------------------------
+  function heff_acid_lookup(SpeciesName, temp_k, pH, do_i_look_like_an_acid)
+    
+    character(Len=16), intent(in)   :: SpeciesName
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH
+    logical,           intent(in)   :: do_i_look_like_an_acid
+    
+    real(r8)                        :: heff_acid_lookup
+    real(r8)                        :: kh, kh298, dhr, k1, k1_298,dh1r, k2, k2_298, dh2r, aH
+    
+    integer                         :: i
+    
+    do i=1,n_species_table
+      if (trim(SpeciesName)==trim(species_name_table(i))) then
+        ! col 1-6 of dheff array...
+        kh298  = dheff((i-1)*6+1)
+        dhr    = dheff((i-1)*6+2)
+        k1_298 = dheff((i-1)*6+3)
+        dh1r   = dheff((i-1)*6+4)
+        k2_298 = dheff((i-1)*6+5)
+        dh2r   = dheff((i-1)*6+6)
+        ! formulation: https://wiki.ucar.edu/display/camchem/Updating+Gas-Phase+Chemistry
+        kh = kh298*exp(dhr*(1.0_r8/temp_k-1.0_r8/298.0_r8))
+        aH = 10.0_r8**(-1.0_r8*pH)
+        k1 = k1_298 * exp(dh1r*(1.0_r8/temp_k-1.0_r8/298.0_r8))
+        k2 = k2_298 * exp(dh2r*(1.0_r8/temp_k-1.0_r8/298.0_r8))
+        if (do_i_look_like_an_acid) then
+          heff_acid_lookup = kh * (1.0_r8 + k1/aH * (1.0_r8 + k2/aH))  ! acid formulation
+        else
+          heff_acid_lookup = kh * (1.0_r8 + k1*aH/k2)                  ! base formulation
+        end if
+        ! write(*,*) "--- species: ", trim(SpeciesName), trim(species_name_table(i))
+        ! write(*,*) "--- h298:    ", dheff((i-1)*6+1)
+        ! write(*,*) "--- dhr:     ", dheff((i-1)*6+2)
+        exit
+      end if
+    end do
+    
+  endfunction heff_acid_lookup
+  
+  ! ---------------------------------------------
+  ! WSY: aqueous-phase reaction: SO2 + H2O2 = SO4
+  ! Siyuan Wang (siyuan@ucar.edu)
+  ! ---------------------------------------------
+  function k_H2O2_SO2_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_H2O2_SO2_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: K1_SO2, K2_SO2, f_HSO3m, aH
+    
+    aH = 10.0_r8**(-1.0_r8*pH)
+    K1_SO2 = 1.3E-2_r8 * exp(1960.0_r8*(1.0_r8/temp_k - 1.0_r8/298.0_r8))
+    K2_SO2 = 6.6E-8_r8 * exp(1500.0_r8*(1.0_r8/temp_k - 1.0_r8/298.0_r8))
+    f_HSO3m = K1_SO2*aH / (aH*aH + K1_SO2*aH + K1_SO2*K2_SO2)
+    k_H2O2_SO2_M_s = 7.45E+7_r8 * aH / (1.0_r8 + 13.0_r8*aH) * f_HSO3m 
+    
+  endfunction k_H2O2_SO2_M_s
+  
+  ! ---------------------------------------------
+  ! fkm: aqueous-phase reaction: DMS + O3 = DMSO
+  ! Ka Ming Fung (fkm@mit.edu)
+  ! Ref: Chen (2018) ACP
+  ! ---------------------------------------------
+  function k_DMS_O3_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_DMS_O3_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: k298  ! base reaction rate at T = 298 K [M s-1]
+    real(r8)                        :: EaR   ! temperature dependent coefficient for reaction rates [K]
+    
+    k298 = 8.61e8_r8
+    EaR  = -2600._r8
+    k_DMS_O3_M_s = k298 * EXP( -EaR * (1._r8 / temp_k - 1._r8 / 298._r8) )
+    
+  endfunction k_DMS_O3_M_s
+  
+  ! ---------------------------------------------
+  ! fkm: aqueous-phase reaction: DMSO + OH -> MSIA
+  ! Ka Ming Fung (fkm@mit.edu)
+  ! Ref: Chen (2018) ACP
+  ! ---------------------------------------------
+  function k_DMSO_OH_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_DMSO_OH_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: k298  ! base reaction rate at T = 298 K [M s-1]
+    real(r8)                        :: EaR   ! temperature dependent coefficient for reaction rates [K]
+    
+    k298 = 6.63e9_r8
+    EaR  = -1270._r8
+    k_DMSO_OH_M_s = k298 * EXP( -EaR * (1._r8 / temp_k - 1._r8 / 298._r8) )
+    
+  endfunction k_DMSO_OH_M_s
+  
+  ! ---------------------------------------------
+  ! fkm: aqueous-phase reaction: MSIA + OH -> MSA
+  ! Ka Ming Fung (fkm@mit.edu)
+  ! Ref: Chen (2018) ACP
+  ! ---------------------------------------------
+  function k_MSIA_OH_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_MSIA_OH_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: k298  ! base reaction rate at T = 298 K [M s-1]
+    real(r8)                        :: EaR   ! temperature dependent coefficient for reaction rates [K]
+    real(r8)                        :: k1, EaR1    ! reaction rates and temperature dependent of MSI- + OH
+    real(r8)                        :: Ka    ! acidic assocation of MSIA
+    real(r8)                        :: H  ! [H+]
+    
+    k298 = 6.e9_r8
+    EaR  = 0._r8
+    k1   = 1.2e10_r8
+    EaR1 = 0._r8
+    Ka   = 10._r8**(-2.28_r8)
+    H    = 10.0_r8**(-1.0_r8*pH)
+    k_MSIA_OH_M_s = k298 * EXP( -EaR * (1._r8 / temp_k - 1._r8 / 298._r8) ) + &
+                         k1 * EXP( -EaR1 * (1._r8 / temp_k - 1._r8 / 298._r8) ) * Ka / (Ka + H)
+    
+  endfunction k_MSIA_OH_M_s
+  
+  ! ---------------------------------------------
+  ! fkm: aqueous-phase reaction: MSIA + O3 -> MSA
+  ! Ka Ming Fung (fkm@mit.edu)
+  ! Ref: Chen (2018) ACP
+  ! ---------------------------------------------
+  function k_MSIA_O3_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_MSIA_O3_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: k298  ! base reaction rate at T = 298 K [M s-1]
+    real(r8)                        :: EaR   ! temperature dependent coefficient for reaction rates [K]
+    real(r8)                        :: k1, EaR1    ! reaction rates and temperature dependent of MSI- + O3
+    real(r8)                        :: Ka    ! acidic assocation of MSIA
+    real(r8)                        :: H  ! [H+]
+    
+    k298 = 3.5e7_r8
+    EaR  = 0._r8
+    k1   = 2.e6_r8
+    EaR1 = 0._r8
+    Ka   = 10._r8**(-2.28_r8)
+    H    = 10.0_r8**(-1.0_r8*pH)
+    k_MSIA_O3_M_s = k298 * EXP( -EaR * (1._r8 / temp_k - 1._r8 / 298._r8) ) + &
+                         k1 * EXP( -EaR1 * (1._r8 / temp_k - 1._r8 / 298._r8) ) * Ka / (Ka + H)
+    
+  endfunction k_MSIA_O3_M_s
+  
+  ! ---------------------------------------------
+  ! fkm: aqueous-phase reaction: MSA + OH -> so4
+  ! Ka Ming Fung (fkm@mit.edu)
+  ! Ref: Chen (2018) ACP
+  ! ---------------------------------------------
+  function k_MSA_OH_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_MSA_OH_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: k298  ! base reaction rate at T = 298 K [M s-1]
+    real(r8)                        :: EaR   ! temperature dependent coefficient for reaction rates [K]
+    real(r8)                        :: k1, EaR1    ! reaction rates and temperature dependent of MS- + OH
+    real(r8)                        :: Ka    ! acidic assocation of MSA
+    real(r8)                        :: H  ! [H+]
+    
+    k298 = 1.5e7_r8
+    EaR  = 0._r8
+    k1   = 1.29e7_r8
+    EaR1 = -2630._r8
+    Ka   = 10._r8**(1.86_r8)
+    H    = 10.0_r8**(-1.0_r8*pH)
+    k_MSA_OH_M_s = k298 * EXP( -EaR * (1._r8 / temp_k - 1._r8 / 298._r8) ) + &
+                         k1 * EXP( -EaR1 * (1._r8 / temp_k - 1._r8 / 298._r8) ) * Ka / (Ka + H)
+    
+  endfunction k_MSA_OH_M_s
+  
+  ! ---------------------------------------------
+  ! fkm: aqueous-phase reaction: HSO3- + HOBR -> so4 + 2H + Br & SO3-- + HOBR -> so4 + 2H + Br
+  ! Ka Ming Fung (fkm@mit.edu)
+  ! Ref: Chen (2018) ACP
+  ! ---------------------------------------------
+  function k_SIV_HOBR_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_SIV_HOBR_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: k298  ! base reaction rate at T = 298 K [M s-1]
+    real(r8)                        :: EaR   ! temperature dependent coefficient for reaction rates [K]
+    real(r8)                        :: k1, EaR1    ! reaction rates and temperature dependent of MS- + OH
+    real(r8)                        :: Ka1, Ka2    ! acidic assocation of S(IV)
+    real(r8)                        :: H  ! [H+]
+    
+    k298 = 3.2e9_r8
+    EaR  = 0._r8
+    k1   = 5.0e9_r8
+    EaR1 = 0._r8
+    Ka1  = 1.30e-02_r8 * EXP( -1960._r8 * (1._r8 / temp_k - 1._r8 / 298._r8) )
+    Ka2  = 6.6e-08_r8  * EXP( -1500._r8 * (1._r8 / temp_k - 1._r8 / 298._r8) )
+    H    = 10.0_r8**(-1.0_r8*pH)
+    k_SIV_HOBR_M_s = ( ( k298 * EXP( -EaR * (1._r8 / temp_k - 1._r8 / 298._r8) ) * Ka1 / H )    + &
+                      ( k1 * EXP( -EaR1 * (1._r8 / temp_k - 1._r8 / 298._r8) ) * (Ka1 * Ka2 / H**2) )  & 
+                      ) / (1 + Ka1 / H + Ka1 * Ka2 / H**2)
+    
+  endfunction k_SIV_HOBR_M_s
+  
+  ! ---------------------------------------------
+  ! fkm: aqueous-phase reaction: HSO3- + O3 -> so4 + 2H + O2 & SO3-- + O3 -> so4 + O2
+  ! Ka Ming Fung (fkm@mit.edu)
+  ! Ref: Chen (2018) ACP
+  ! ---------------------------------------------
+  function k_SIV_O3_M_s(pH, temp_k)
+    
+    real(r8),          intent(in)   :: temp_k
+    real(r8),          intent(in)   :: pH  
+    
+    real(r8)                        :: k_SIV_O3_M_s  ! unit: M^-1 s^-1
+    real(r8)                        :: k298  ! base reaction rate at T = 298 K [M s-1]
+    real(r8)                        :: EaR   ! temperature dependent coefficient for reaction rates [K]
+    real(r8)                        :: k1, EaR1    ! reaction rates and temperature dependent of SO3 2- + O3 -> SO4 2- + O2
+    real(r8)                        :: Ka1, Ka2    ! acidic assocation of S(IV)
+    real(r8)                        :: H  ! [H+]
+    
+    k298 = 3.2e5_r8
+    EaR  = 4830._r8
+    k1   = 1.0e9_r8
+    EaR1 = 4030._r8
+    Ka1  = 1.30e-02_r8 * EXP( -1960._r8 * (1._r8 / temp_k - 1._r8 / 298._r8) )
+    Ka2  = 6.6e-08_r8  * EXP( -1500._r8 * (1._r8 / temp_k - 1._r8 / 298._r8) )
+    H    = 10.0_r8**(-1.0_r8*pH)
+    k_SIV_O3_M_s = ( ( k298 * EXP( -EaR * (1._r8 / temp_k - 1._r8 / 298._r8) ) * Ka1 / H )    + &
+                      ( k1 * EXP( -EaR1 * (1._r8 / temp_k - 1._r8 / 298._r8) ) * (Ka1 * Ka2 / H**2) )  & 
+                      ) / (1 + Ka1 / H + Ka1 * Ka2 / H**2)
+    
+  endfunction k_SIV_O3_M_s
+  
 end module mo_usrrxt

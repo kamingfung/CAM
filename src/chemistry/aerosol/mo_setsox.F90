@@ -15,6 +15,11 @@ module MO_SETSOX
   integer :: id_so2, id_nh3, id_hno3, id_h2o2, id_o3, id_ho2
   integer :: id_so4, id_h2so4
 
+
+#if ( defined MOSAIC_SPECIES )
+  integer :: id_hcl
+#endif
+
   logical :: has_sox = .true.
   logical :: inv_so2, inv_nh3, inv_hno3, inv_h2o2, inv_ox, inv_nh4no3, inv_ho2
 
@@ -29,7 +34,7 @@ contains
     !-----------------------------------------------------------------------      
     !	... initialize the hetero sox routine
     !-----------------------------------------------------------------------      
-
+    use cam_abortutils,  only : endrun
     use mo_chem_utls, only : get_spc_ndx, get_inv_ndx
     use spmd_utils,   only : masterproc
     use phys_control, only : phys_getopts
@@ -101,6 +106,12 @@ contains
     else
        id_ho2 = get_spc_ndx( 'HO2' )
     endif
+#if ( defined MOSAIC_SPECIES )
+    id_hcl = get_spc_ndx( 'HCL' )
+    if ( id_so2<=0 .or. id_nh3<=0 .or. id_hno3<=0 .or. id_hcl<=0 .or. id_h2o2<=0 .or. id_o3<=0 .or. id_ho2<=0 ) then
+       call endrun( 'sox_inti:  some of the MOSAIC_SPECIES gases are missing' )
+    endif
+#endif
 
     has_sox = (id_so2>0) .and. (id_h2o2>0) .and. (id_o3>0) .and. (id_ho2>0)
     if (cloud_borne) then
@@ -146,6 +157,7 @@ contains
        qcw,    &
        qin,    &
        xphlwc, &
+       cloud_ph, &  ! added by fkm for cloud reactions
        aqso4,  &
        aqh2so4,&
        aqso4_h2o2, &
@@ -177,7 +189,9 @@ contains
     use mo_constants, only : pi
     use sox_cldaero_mod, only : sox_cldaero_update, sox_cldaero_create_obj, sox_cldaero_destroy_obj
     use cldaero_mod,     only : cldaero_conc_t
-
+#if ( defined MOSAIC_SPECIES )
+    use modal_aero_data, only : mosaic_aqchem_optaa
+#endif
     !
     implicit none
     !
@@ -200,6 +214,8 @@ contains
     real(r8), target, intent(inout) :: qcw(:,:,:)        ! cloud-borne aerosol (vmr)
     real(r8),         intent(inout) :: qin(:,:,:)        ! transported species ( vmr )
     real(r8),         intent(out)   :: xphlwc(:,:)       ! pH value multiplied by lwc
+    
+    real(r8),         intent(out)   :: cloud_ph(:,:)       ! cloud ph; added by fkm for cloud reaction
 
     real(r8),         intent(out)   :: aqso4(:,:)                   ! aqueous phase chemistry
     real(r8),         intent(out)   :: aqh2so4(:,:)                 ! aqueous phase chemistry
@@ -242,12 +258,18 @@ contains
     real(r8) :: xph0, aden, xk, xe, x2
     real(r8) :: tz, xl, px, qz, pz, es, qs, patm
     real(r8) :: Eso2, Eso4, Ehno3, Eco2, Eh2o, Enh3
+#if ( defined MOSAIC_SPECIES )
+    real(r8) :: Eca, Ehcl, Ena
+#endif
     real(r8) :: so2g, h2o2g, co2g, o3g
     real(r8) :: hno3a, nh3a, so2a, h2o2a, co2a, o3a
     real(r8) :: rah2o2, rao3, pso4, ccc
     real(r8) :: cnh3, chno3, com, com1, com2, xra
 
     real(r8) :: hno3g(ncol,pver), nh3g(ncol,pver)
+#if ( defined MOSAIC_SPECIES )
+    real(r8) :: hclg(ncol,pver)
+#endif
     !
     !-----------------------------------------------------------------------      
     !            for Ho2(g) -> H2o2(a) formation 
@@ -269,6 +291,10 @@ contains
          heh2o2, &            ! henry law const for h2o2
          heso2,  &            ! henry law const for so2
          henh3,  &            ! henry law const for nh3
+#if ( defined MOSAIC_SPECIES )
+         hehcl,  &            ! henry law const for hcl
+         xca, xcl, xco3, xhcl, xna, &
+#endif
          heo3              !!,   &            ! henry law const for o3
 
     real(r8) :: patm_x
@@ -279,11 +305,21 @@ contains
     real(r8), pointer :: xso4c(:,:)
     real(r8), pointer :: xnh4c(:,:)
     real(r8), pointer :: xno3c(:,:)
+#if ( defined MOSAIC_SPECIES )
+    real(r8), pointer :: xnac(:,:)
+    real(r8), pointer :: xclc(:,:)
+    real(r8), pointer :: xcac(:,:)
+    real(r8), pointer :: xco3c(:,:)
+#endif
     type(cldaero_conc_t), pointer :: cldconc
 
     real(r8) :: fact1_hno3, fact2_hno3, fact3_hno3
     real(r8) :: fact1_so2, fact2_so2, fact3_so2, fact4_so2
     real(r8) :: fact1_nh3, fact2_nh3, fact3_nh3
+#if ( defined MOSAIC_SPECIES )
+    real(r8) :: fact1_hcl, fact2_hcl, fact3_hcl
+    real(r8) :: tmp_ca, tmp_cl, tmp_na
+#endif
     real(r8) :: tmp_hp, tmp_hso3, tmp_hco3, tmp_nh4, tmp_no3
     real(r8) :: tmp_oh, tmp_so3, tmp_so4
     real(r8) :: tmp_neg, tmp_pos
@@ -314,10 +350,23 @@ contains
     xnh4c => cldconc%nh4c
     xno3c => cldconc%no3c
 
+#if ( defined MOSAIC_SPECIES )
+    xnac => cldconc%nac
+    xclc => cldconc%clc
+    xcac => cldconc%cac
+    xco3c => cldconc%co3c
+#endif
+
     xso4(:,:) = 0._r8
     xno3(:,:) = 0._r8
     xnh4(:,:) = 0._r8
-
+#if ( defined MOSAIC_SPECIES )
+    xna(:,:) = 0._r8
+    xcl(:,:) = 0._r8
+    xca(:,:) = 0._r8
+    xco3(:,:) = 0._r8
+#endif
+  
     do k = 1,pver
        xph(:,k) = xph0                                ! initial PH value
 
@@ -362,7 +411,13 @@ contains
           xso4  (:,k) = qin(:,k,id_so4) ! mixing ratio
        endif
        if (id_msa > 0) xmsa (:,k) = qin(:,k,id_msa)
-
+#if ( defined MOSAIC_SPECIES )
+       if (id_hcl  > 0) then
+          xhcl (:,k) = qin(:,k,id_hcl)
+       else
+          xhcl (:,k) = 0.0_r8
+       endif
+#endif
     end do
     
     !-----------------------------------------------------------------
@@ -375,6 +430,12 @@ contains
              xso4(i,k) = xso4c(i,k) / cldfrc(i,k)
              xnh4(i,k) = xnh4c(i,k) / cldfrc(i,k)
              xno3(i,k) = xno3c(i,k) / cldfrc(i,k)
+#if ( defined MOSAIC_SPECIES )
+             xna(i,k) = xnac(i,k) / cldfrc(i,k)
+             xcl(i,k) = xclc(i,k) / cldfrc(i,k)
+             xca(i,k) = xcac(i,k) / cldfrc(i,k)
+             xco3(i,k) = xco3c(i,k) / cldfrc(i,k)
+#endif
           endif
           xl = cldconc%xlwc(i,k)
 
@@ -419,10 +480,42 @@ contains
              !    [hno3-] = ehno3/hplus
              xk = 2.1e5_r8 *EXP( 8700._r8*work1(i) )
              xe = 15.4_r8
+#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+             if (mosaic_aqchem_optaa > 0) then
+                fact1_hno3 = xk*xe*patm*(xhno3(i,k)+xno3(i,k))
+             else
+                fact1_hno3 = xk*xe*patm*xhno3(i,k)
+             endif
+#else
              fact1_hno3 = xk*xe*patm*xhno3(i,k)
+#endif
              fact2_hno3 = xk*ra*tz*xl
              fact3_hno3 = xe
-
+#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+             !-----------------------------------------------------------------
+             !        ... hcl
+             !-----------------------------------------------------------------
+             ! equivalent new code
+             !    hehcl = xk + xk*xe/hplus
+             !    px = hehcl(i,k) * Ra * tz * xl = clc/hclg
+             !    hclg = (xhcl+xcl)/(1 + px)  [in mol/mol]
+             !          = (xhcl+xcl)/(1 + hehcl*ra*tz*xl)
+             !          = (xhcl+xcl)/(1 + xk*ra*tz*xl*(1 + xe/hplus)
+             !    ehcl = hclg*xk*xe*patm
+             !          = xk*xe*patm*(xhcl+xcl)/(1 + xk*ra*tz*xl*(1 + xe/hplus)
+             !          = ( fact1_hcl    )/(1 + fact2_hcl *(1 + fact3_hcl/hplus)
+             !    [cl-] = ehcl/hplus
+             !
+         ! xk and xe from Pandis and Seinfeld (1989, Atmos Environ)
+         !   xk = 7.27e2_r8*EXP( 2020._r8*work1(i) )
+         !   xe = 1.74e6_r8*EXP( 6900._r8*work1(i) )
+         ! xk and xe from CAPRAM 2.4 model = from Marsh and McElroy (1985, Atmos Environ)
+             xk = 1.10e0_r8*exp( 2020._r8*work1(i) )
+             xe = 1.72e6_r8*exp( 6890._r8*work1(i) )
+             fact1_hcl = xk*xe*patm*(xhcl(i,k)+xcl(i,k))
+             fact2_hcl = xk*ra*tz*xl
+             fact3_hcl = xe
+#endif
              !-----------------------------------------------------------------
              !          ... so2
              !-----------------------------------------------------------------
@@ -491,6 +584,18 @@ contains
              Eso4 = xso4(i,k)*xhnm(i,k)   &         ! /cm3(a)
                   *const0/xl
 
+#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+             !-----------------------------------------------------------------
+             !         ... na+ effect
+             !-----------------------------------------------------------------
+             Ena = xna(i,k)*xhnm(i,k)*const0/xl     ! /cm3(a)
+
+             !-----------------------------------------------------------------
+             !         ... ca++ & co3-- net effect
+             !             only the ca in excess of co3 is soluble
+             !-----------------------------------------------------------------
+             Eca = max( xca(i,k)-xco3(i,k), 0.0_r8 )*xhnm(i,k)*const0/xl     ! /cm3(a)
+#endif
 
              !-----------------------------------------------------------------
              ! now use bisection method to solve electro-neutrality equation
@@ -530,7 +635,13 @@ contains
                 !        ... hno3
                 !-----------------------------------------------------------------
                 Ehno3 = fact1_hno3/(1.0_r8 + fact2_hno3*(1.0_r8 + fact3_hno3/xph(i,k)))
+#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+                !-----------------------------------------------------------------
+                !        ... hcl
+                !-----------------------------------------------------------------
+                Ehcl = fact1_hcl/(1.0_r8 + fact2_hcl*(1.0_r8 + fact3_hcl/xph(i,k)))
 
+#endif
                 !-----------------------------------------------------------------
                 !          ... so2
                 !-----------------------------------------------------------------
@@ -551,6 +662,15 @@ contains
                 tmp_so4 = cldconc%so4_fact*Eso4
                 tmp_pos = xph(i,k) + tmp_nh4
                 tmp_neg = tmp_oh + tmp_hco3 + tmp_no3 + tmp_hso3 + tmp_so3 + tmp_so4
+#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+                tmp_cl  = Ehcl / xph(i,k)
+                tmp_na  = Ena
+                tmp_ca  = 2.0_r8*Eca
+                if (mosaic_aqchem_optaa > 0) then
+                   tmp_pos = tmp_pos + tmp_na + tmp_ca
+                   tmp_neg = tmp_neg + tmp_cl
+                endif
+#endif
 
                 ynetpos = tmp_pos - tmp_neg
 
@@ -644,6 +764,20 @@ contains
           xe = 15.4_r8
           hehno3(i,k)  = xk*(1._r8 + xe/xph(i,k))
 
+#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+          !-----------------------------------------------------------------
+          !          ... hcl
+          !-----------------------------------------------------------------
+      ! xk and xe from Pandis and Seinfeld (1989, Atmos Environ)
+      !   xk = 7.27e2_r8*EXP( 2020._r8*work1(i) )
+      !   xe = 1.74e6_r8*EXP( 6900._r8*work1(i) )
+      ! xk and xe from CAPRAM 2.4 model - from Marsh and McElroy (1985, Atmos Environ)
+          xk = 1.10e0_r8*exp( 2020._r8*work1(i) )
+          xe = 1.72e6_r8*exp( 6890._r8*work1(i) )
+          hehcl(i,k)  = xk*(1._r8 + xe/xph(i,k))
+
+#endif
+
           !-----------------------------------------------------------------
           !        ... h2o2
           !-----------------------------------------------------------------
@@ -705,6 +839,15 @@ contains
           !-----------------------------------------------------------------
           px = hehno3(i,k) * Ra * tz * xl
           hno3g(i,k) = (xhno3(i,k)+xno3(i,k))/(1._r8 + px)
+
+#if ( defined MODAL_AERO && defined MOSAIC_SPECIES )
+          !------------------------------------------------------------------------
+          !         ... hcl
+          !------------------------------------------------------------------------
+          px = hehcl(i,k) * Ra * tz * xl
+          hclg(i,k) = (xhcl(i,k)+xcl(i,k))/(1._r8+ px)
+
+#endif
 
           !------------------------------------------------------------------------
           !        ... h2o2
@@ -860,14 +1003,20 @@ contains
 
     call sox_cldaero_update( &
          ncol, lchnk, loffset, dtime, mbar, pdel, press, tfld, cldnum, cldfrc, cfact, cldconc%xlwc, &
-         xdelso4hp, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, qcw, qin, &
+         xdelso4hp, xh2so4, xso4, xso4_init, nh3g, hno3g, xnh3, xhno3, xnh4c,  xno3c, xmsa, xso2, xh2o2, &
+#if ( defined MOSAIC_SPECIES )
+         hclg, xhcl, xclc, &
+#endif
+         qcw, qin, &
          aqso4, aqh2so4, aqso4_h2o2, aqso4_o3, aqso4_h2o2_3d=aqso4_h2o2_3d, aqso4_o3_3d=aqso4_o3_3d )
     
     xphlwc(:,:) = 0._r8
+    cloud_ph(:,:) = 4.5_r8
     do k = 1, pver
        do i = 1, ncol
           if (cldfrc(i,k)>=1.e-5_r8 .and. lwc(i,k)>=1.e-8_r8) then
              xphlwc(i,k) = -1._r8*log10(xph(i,k)) * lwc(i,k)
+             cloud_ph(i,k) = -1._r8*log10(xph(i,k))
           endif
        end do
     end do

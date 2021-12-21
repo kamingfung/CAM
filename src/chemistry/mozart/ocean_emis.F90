@@ -86,7 +86,7 @@ module ocean_emis
   ! seawater concentration:
   ! ===========================
   character(len=cl) :: csw_specifier(gas_pcnst) = ''                    
-  character(len=24) :: csw_time_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' | 'INTERP_MISSING_MONTHS'
+  character(len=24) :: csw_type = 'CYCLICAL' ! 'CYCLICAL' | 'SERIAL' | 'INTERP_MISSING_MONTHS'
   integer           :: csw_cycle_yr  = 0
   logical           :: bubble_mediated_transfer = .false.                                                                                                      
   character(len=cl) :: ocean_salinity_file = 'NONE'
@@ -109,7 +109,7 @@ contains
     ! Namelist definition
     ! ===================
     namelist /ocean_emis_nl/ ocean_salinity_file
-    namelist /ocean_emis_nl/ csw_specifier, csw_time_type, csw_cycle_yr, bubble_mediated_transfer
+    namelist /ocean_emis_nl/ csw_specifier, csw_type, csw_cycle_yr, bubble_mediated_transfer
 
     ! =============
     ! Read namelist
@@ -131,7 +131,7 @@ contains
     ! ============================
     call mpi_bcast(ocean_salinity_file, len(ocean_salinity_file),   mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(csw_specifier,       cl*gas_pcnst,               mpi_character, masterprocid, mpicom, ierr)
-    call mpi_bcast(csw_time_type,       len(csw_time_type),         mpi_character, masterprocid, mpicom, ierr)
+    call mpi_bcast(csw_type,            len(csw_type),              mpi_character, masterprocid, mpicom, ierr)
     call mpi_bcast(csw_cycle_yr,        1,                          mpi_integer,   masterprocid, mpicom, ierr)
     call mpi_bcast(bubble_mediated_transfer, 1,                     mpi_logical,   masterprocid, mpicom, ierr)
 
@@ -149,8 +149,7 @@ contains
     use ioFileMod,        only : getfil
     use cam_pio_utils,    only : cam_pio_openfile
     use pio,              only : file_desc_t, pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, pio_get_var
-    use pio,              only : PIO_NOWRITE, PIO_NOERR
-    use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR, pio_closefile
+    use pio,              only : PIO_NOWRITE
     use phys_grid,        only : get_ncols_p, get_rlon_all_p, get_rlat_all_p 
     use interpolate_data, only : lininterp_init, lininterp, interp_type, lininterp_finish
     use mo_constants,     only : pi
@@ -166,63 +165,29 @@ contains
 
     real(r8), parameter   :: zero=0_r8, twopi=2_r8*pi, degs2rads = pi/180._r8
 
-    character(len=*), parameter :: subname = 'ocean_emis_init'
-    
     if (trim(ocean_salinity_file) == 'NONE') return
 
     call getfil( ocean_salinity_file, filen, 0 )
     call cam_pio_openfile( fid, filen, PIO_NOWRITE)
-    
-    call pio_seterrorhandling(fid, PIO_BCAST_ERROR)
-    
+
     ierr = pio_inq_dimid( fid, 'lon', dimid )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_dimid lon FAILED')
-    endif
     ierr = pio_inq_dimlen( fid, dimid, file_nlon )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_dimlen file_nlon FAILED')
-    endif
 
     allocate( file_lons(file_nlon) )
     ierr =  pio_inq_varid( fid, 'lon', vid )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_varid lon FAILED')
-    endif
     ierr =  pio_get_var( fid, vid, file_lons )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_get_var file_lons FAILED')
-    endif
     file_lons = file_lons * degs2rads
 
     ierr = pio_inq_dimid( fid, 'lat', dimid )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_dimid lat FAILED')
-    endif
     ierr = pio_inq_dimlen( fid, dimid, file_nlat )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_dimlen file_nlat FAILED')
-    endif
     allocate( file_lats(file_nlat) )
     ierr =  pio_inq_varid( fid, 'lat', vid )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_varid lat FAILED')
-    endif
     ierr =  pio_get_var( fid, vid, file_lats )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_varid SSS FAILED')
-    endif
     file_lats = file_lats * degs2rads
 
     allocate( wrk2d( file_nlon, file_nlat ) )
     ierr =  pio_inq_varid( fid, 'SSS', vid )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_inq_varid SSS FAILED')
-    endif
     ierr = pio_get_var( fid, vid, wrk2d )
-    if (ierr /= PIO_NOERR) then
-       call endrun(subname//': pio_get_var SSS FAILED')
-    endif
 
     allocate(salinity(pcols,begchunk:endchunk))
 
@@ -257,8 +222,6 @@ contains
     ! Read seawater concentration: WSY
     ! ---------------------------------------------
     call cseawater_ini()
-
-    call pio_closefile (fid)
     
   end subroutine ocean_emis_init
 
@@ -303,6 +266,7 @@ contains
 
     integer             :: m, isec, SpeciesID
     real(r8)            :: Csw_col(ncol)
+    Character(Len=16)   :: SpeciesName
     real(r8)            :: MW_species
     real(r8) :: oceanflux_kg_m2_s(ncol)        
 
@@ -314,26 +278,30 @@ contains
     Csw_loop : do m = 1, n_Csw_files
 
        Csw_col(:) = 0._r8
+       ! do isec = 1,Csw_nM(m)%nsectors ! no need to loop. only one sector at this point
+       ! Csw_col(:ncol) = Csw_col(:ncol) + Csw_nM(m)%scalefactor*Csw_nM(m)%fields(isec)%data(:ncol,1,lchnk)
+       ! enddo
        isec = 1
        Csw_col(:ncol) = Csw_nM(m)%scalefactor*Csw_nM(m)%fields(isec)%data(:ncol,1,lchnk)
 
-       MW_species = MolecularWeight(SpeciesIndex( Csw_nM(m)%species )) 
+       SpeciesName = Csw_nM(m)%species
+       MW_species = MolecularWeight(SpeciesIndex( SpeciesName )) 
 
-       call cnst_get_ind( trim(Csw_nM(m)%species), SpeciesID, abort=.true. )
+       call cnst_get_ind( trim(Csw_nM(m)%species), SpeciesID )
 
        oceanflux_kg_m2_s = 0.0_r8
 
        where (ocnfrac(:ncol) >= 0.2_r8 .and. Csw_col(:ncol) >= 0._r8)   ! calculate flux only for ocean
           oceanflux_kg_m2_s(:ncol) = Flux_kg_m2_s( &
-               Csw_nM(m)%species,                  & ! name of species
-               state%q(:ncol,pver,SpeciesID) * (28.97_r8/MW_species) * 1.0e+12_r8, & ! air concentration (ppt)
-               Csw_col(:ncol),                     & ! sea water concentration (nM)
-               state%t(:ncol,pver),                & ! air temperature (K)
-               u10(:ncol),                         & ! wind speed at 10m (m/s) <- should use this
-               state%ps(:ncol) / 101325.0_r8,      & ! surface pressure (atm)
-               sst(:ncol),                         & ! sea surface temperautre (K)
-               salinity(:ncol,lchnk),              & ! ocean salinity (parts per thousands)
-               switch_bubble,                      & ! bubble-mediated transfer: on or off
+               Csw_nM(m)%species,                      & !
+               state%q(:,pver,SpeciesID) * (28.97_r8/MW_species) * 1.0e+12_r8, & ! air concentration (ppt)
+               Csw_col,                                & ! sea water concentration (nM)
+               state%t(:,pver),                        & ! air temperature (K)
+               u10,                                    & ! wind speed at 10m (m/s) <- should use this
+               state%ps / 101325.0_r8,                 & ! surface pressure (atm)
+               sst,                                    & ! sea surface temperautre (K)
+               salinity(:ncol,lchnk),                  & ! ocean salinity (parts per thousands)
+               switch_bubble,                          & ! bubble-mediated transfer: on or off
                ncol  ) 
        end where
 
@@ -341,8 +309,8 @@ contains
        ! Add the ocean flux to the other fluxes 
        ! Make sure this ocean module is called after other surface emissions are set
        ! ===========================================================================
-       sflx(:ncol,SpeciesID) = sflx(:ncol,SpeciesID) + oceanflux_kg_m2_s(:ncol) * ocnfrac(:ncol)
-
+       ! sflx(:ncol,SpeciesID) = sflx(:ncol,SpeciesID) + oceanflux_kg_m2_s(:ncol) * ocnfrac(:ncol) ! commented by fkm for no DMS on ice
+       sflx(:ncol,SpeciesID) = sflx(:ncol,SpeciesID) + oceanflux_kg_m2_s(:ncol) * ocnfrac(:ncol) * ( 1._r8 - icefrac(:ncol) )    ! added by fkm for no DMS on ice
        ! ====================================
        ! Write stuff into the historial files
        ! ====================================
@@ -437,9 +405,6 @@ contains
     ! ==============================================
     Integer             :: SpeciesIndex, i
     Character(Len=16)   :: SpeciesName
-
-    SpeciesIndex = -1 ! return -1 if species is not found
- 
     Do i = 1, HowManyMolecules
        If (trim(SpeciesName) == trim(GasList(i)%CmpdName)) Then
           SpeciesIndex = i
@@ -453,7 +418,6 @@ contains
     ! ===========================================================================
     ! This is the main module function. Input variables:
     ! ---------------------------------------------------------------------------
-    !    - SpeciesName: name of species
     !    - Cgas_ppt: mixing ratio (parts per trillion) of trace gas of interest 
     !      in the gas-phase (lowest modeling layer)
     !    - Cwater_nM: concentration of trace gas of interest in the surface ocean
@@ -462,7 +426,6 @@ contains
     !    - P_atm: air pressure in atm at sea surface level
     !    - T_water_K: sea surface temperature
     !    - Salinity_PartsPerThousand: surface ocean salinity
-    !    - switch_bubble: bubble-mediated transfer switch
     ! All must be 1D arrays with same dimension(ncol, so CESM-compatible)
     ! ===========================================================================
     Integer                   :: ncol, SpeciesID
@@ -471,6 +434,8 @@ contains
     Real(r8), Dimension(ncol) :: Cgas_ppt, Cwater_nM, T_air_K, u10_m_s, P_atm, T_water_K, Salinity_PartsPerThousand
     Real(r8), Dimension(ncol) :: H_gas_over_liquid_dimless, kt_m_s
     Logical                   :: switch_bubble
+    ! Call CmpLibInitialization()
+    ! Call SaltLibInitialization()
 
     where(Salinity_PartsPerThousand .lt. 0.0_r8) Salinity_PartsPerThousand = 33.0_r8
 
@@ -481,11 +446,13 @@ contains
        ! --------------------------------------------------------
        ! k_water parameterization with bubble-induced enhancement
        ! --------------------------------------------------------
+       ! print *, 'bubble-mediated'
        kt_m_s = (1.0_r8/k_water_m_s_bubble(SpeciesID, T_water_K, Salinity_PartsPerThousand, &
                                            u10_m_s, Cgas_ppt, P_atm, T_air_K, ncol) &
                + 1.0_r8/k_air_m_s(SpeciesID, u10_m_s, T_air_K, P_atm, ncol)&
                        /H_gas_over_liquid_dimless)**(-1.0_r8)
     else
+       ! print *, 'non bubble-mediated'
        ! ------------------------------------------------
        ! Original k_water parameterization, scaled to CO2
        ! ------------------------------------------------
@@ -499,13 +466,13 @@ contains
 
 
   Function k_air_m_s(SpeciesIndex, u10_m_s, T_air_K, P_atm, ncol)
-    use shr_const_mod, only: vonKarman=>SHR_CONST_KARMAN
     ! =============================================================================
     ! Air-side transfer velocity. Slightly modified NOAA COARE (Fairall et al 2003; 
     ! Feffery et al 2010), as recommended by Johnson Ocean Sci. 2010. 
     ! Dynamic viscosity of air: Tsilingiris 2008
     ! =============================================================================
     Integer                   :: ncol, SpeciesIndex
+    Real(r8)                  :: vonKarman = 0.4_r8
     Real(r8), Dimension(ncol) :: k_air_m_s 
     Real(r8), Dimension(ncol) :: u10_m_s, T_air_K, P_atm, ustar_m_s, DragCoeff
     Real(r8), Dimension(ncol) :: DynamicViscosityAir_kg_m_s, DensityAir_kg_m3, DiffusivityInAir, SchmidtNumberInAir
@@ -581,8 +548,8 @@ contains
     ! ============================
     Integer                   :: ncol, SpeciesIndex
     Real(r8), Dimension(ncol) :: DiffusivityInAir_cm2_s, T_air_K, P_atm
-    Real(r8), parameter       :: MW_air = 28.97_r8   ! molecular weight for air
-    Real(r8), parameter       :: Va = 20.1_r8        ! molar volume for air
+    Real(r8)                  :: MW_air = 28.97_r8   ! molecular weight for air
+    Real(r8)                  :: Va = 20.1_r8        ! molar volume for air
     Real(r8)                  :: Vb, MW_species
     Vb = LiquidMolarVolume_cm3_mol(SpeciesIndex)
     MW_species = MolecularWeight(SpeciesIndex)
@@ -590,6 +557,7 @@ contains
          * (((MW_air + MW_species)/(MW_air*MW_species))**0.5_r8) &
          / ((P_atm*(Va**(1.0_r8/3.0_r8)+Vb**(1.0_r8/3.0_r8)))**2.0_r8)
   End Function DiffusivityInAir_cm2_s
+
 
 
 
@@ -616,6 +584,8 @@ contains
                              * (Vb**(-0.19_r8)-0.292_r8)
 
   End Function DiffusivityInWater_cm2_s
+
+
 
 
   Function DynamicViscosityWater_g_m_s(T_water_K, Salinity_PartsPerThousand, ncol)
@@ -651,6 +621,9 @@ contains
   End Function DynamicViscosityWater_g_m_s
 
 
+
+
+
   Function DensityWater_kg_m3(T_water_K, Salinity_PartsPerThousand, ncol)
     ! ====================================================
     ! Ref: Millero and Poisson (1981). Salinity considered
@@ -670,6 +643,9 @@ contains
     DensityWater_kg_m3 = DensityPureWater_kg_m3 + FactorA*Salinity_PartsPerThousand &
          + FactorB*(Salinity_PartsPerThousand**(2.0_r8/3.0_r8)) + FactorC*Salinity_PartsPerThousand
   End Function DensityWater_kg_m3
+
+
+
 
 
   Function Henry_M_atm(SpeciesIndex, T_water_K, Salinity_PartsPerThousand, ncol)
@@ -697,11 +673,13 @@ contains
   End Function Henry_M_atm
 
 
+
   Function MolecularWeight(SpeciesIndex)
     Real(r8)  :: MolecularWeight
     Integer   :: SpeciesIndex
     MolecularWeight = GasList(SpeciesIndex)%CmpdProperties(1)
   End Function MolecularWeight
+
 
 
   Function LiquidMolarVolume_cm3_mol(SpeciesIndex)
@@ -710,8 +688,7 @@ contains
     ! is zero, Schroeder's group contribution method is used
     ! ===========================================================================
     Real(r8)    :: LiquidMolarVolume_cm3_mol
-    Integer     :: SpeciesIndex
-
+    Integer             :: SpeciesIndex
     If (GasList(SpeciesIndex)%CmpdProperties(14)/=0.0_r8) Then  
        LiquidMolarVolume_cm3_mol = GasList(SpeciesIndex)%CmpdProperties(14)
     Else
@@ -728,7 +705,6 @@ contains
        LiquidMolarVolume_cm3_mol = LiquidMolarVolume_cm3_mol + 7.0_r8*GasList(SpeciesIndex)%CmpdProperties(11)   ! Double bond
        LiquidMolarVolume_cm3_mol = LiquidMolarVolume_cm3_mol + 14.0_r8*GasList(SpeciesIndex)%CmpdProperties(12)  ! Triple bond
     Endif
-
   End Function LiquidMolarVolume_cm3_mol
 
   subroutine cseawater_ini()
@@ -738,7 +714,7 @@ contains
     use cam_pio_utils,    only : cam_pio_openfile       
     use pio,              only : pio_inquire, pio_nowrite, pio_closefile, pio_inq_varndims
     use pio,              only : pio_inq_varname, file_desc_t, pio_get_att, PIO_NOERR, PIO_GLOBAL
-    use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR    
+    use pio,              only : pio_seterrorhandling, PIO_BCAST_ERROR,PIO_INTERNAL_ERROR       
     use string_utils,     only : GLC    
 
     integer             :: i, j, l, m, n, nn, astat, vid, ierr, nvars, isec
@@ -764,10 +740,8 @@ contains
     character(len=1),   parameter  :: datapath = ''
     logical,            parameter  :: rmv_file = .false.
 
-    character(len=*), parameter :: subname = 'cseawater_ini'
-
     ! ========================================================  
-    ! Read sea water concentration specifier from the namelist
+    ! Read sea water concentration specifier from tne namelist
     ! ========================================================
 
     nn = 0
@@ -800,7 +774,7 @@ contains
        m = get_spc_ndx(spc_name)
 
        if ( m<1 ) then
-          if (masterproc) write(iulog,*) 'cseawater_inti: spc_name ',spc_name,' is not included in the simulation'
+          write(iulog,*) 'cseawater_inti: spc_name ',spc_name,' is not included in the simulation'
           call endrun('cseawater_inti: invalid seawater concentration specification')
        endif
 
@@ -816,12 +790,12 @@ contains
 
     n_Csw_files = nn
 
-    if (masterproc) write(iulog,*) subname//': n_Csw_files = ',n_Csw_files
+    if (masterproc) write(iulog,*) 'cseawater_ini: n_Csw_files = ',n_Csw_files
 
     allocate( Csw_nM(n_Csw_files), stat=astat )
     if( astat/= 0 ) then
-       write(iulog,*) subname//': failed to allocate Csw_nM array; error = ',astat
-       call endrun(subname//': failed to allocate Csw_nM array')
+       write(iulog,*) 'cseawater_ini: failed to allocate Csw_nM array; error = ',astat
+       call endrun('cseawater_ini: failed to allocate Csw_nM array')
     end if
 
     ! -------------------------------------------
@@ -844,32 +818,20 @@ contains
 
        call getfil (Csw_nM(m)%filename, locfn, 0)
        call cam_pio_openfile ( ncid, trim(locfn), PIO_NOWRITE)
-
-       call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
-
        ierr = pio_inquire(ncid, nvariables=nvars)
-       if (ierr /= PIO_NOERR) then
-          call endrun(subname//': pio_inquire nvars FAILED')
-       endif
 
        allocate(vndims(nvars))
 
        do vid = 1,nvars
 
           ierr = pio_inq_varndims (ncid, vid, vndims(vid))
-          if (ierr /= PIO_NOERR) then
-             call endrun(subname//': pio_inq_varndims FAILED')
-          endif
 
           if( vndims(vid) < 3 ) then
              cycle
           elseif( vndims(vid) > 3 ) then
              ierr = pio_inq_varname (ncid, vid, varname)
-             if (ierr /= PIO_NOERR) then
-                call endrun(subname//': pio_inq_varname varname FAILED')
-             endif
-             write(iulog,*) subname//': Skipping variable ', trim(varname),', ndims = ',vndims(vid), &
-                            ', species=',trim(Csw_nM(m)%species)
+             write(iulog,*) 'cseawater_ini: Skipping variable ', trim(varname),', ndims = ',vndims(vid), &
+                  ' , species=',trim(Csw_nM(m)%species)
              cycle
           end if
 
@@ -879,8 +841,8 @@ contains
 
        allocate( Csw_nM(m)%sectors(Csw_nM(m)%nsectors), stat=astat )
        if( astat/= 0 ) then
-          write(iulog,*) subname//': failed to allocate Csw_nM(m)%sectors array; error = ',astat
-          call endrun(subname//': failed to allocate Csw_nM(m)%sectors array')
+          write(iulog,*) 'cseawater_ini: failed to allocate Csw_nM(m)%sectors array; error = ',astat
+          call endrun
        end if
 
        isec = 1
@@ -888,9 +850,6 @@ contains
        do vid = 1,nvars
           if( vndims(vid) == 3 ) then
              ierr = pio_inq_varname(ncid, vid, Csw_nM(m)%sectors(isec))
-             if (ierr /= PIO_NOERR) then
-                call endrun(subname//': pio_inq_varname Csw_nM(m)%sectors(isec) FAILED')
-             endif
              isec = isec+1
           endif
 
@@ -900,11 +859,13 @@ contains
        ! Global attribute 'input_method' overrides the srf_emis_type namelist setting on
        ! a file-by-file basis.  If the emis file does not contain the 'input_method' 
        ! attribute then the srf_emis_type namelist setting is used.
+       call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)  
        ierr = pio_get_att(ncid, PIO_GLOBAL, 'input_method', file_interp_type)   
+       call pio_seterrorhandling(ncid, PIO_INTERNAL_ERROR)
        if ( ierr == PIO_NOERR) then
           l = GLC(file_interp_type)
-          csw_time_type(1:l) = file_interp_type(1:l)
-          csw_time_type(l+1:) = ' '
+          csw_type(1:l) = file_interp_type(1:l)
+          csw_type(l+1:) = ' '
        endif
 
        call pio_closefile (ncid)
@@ -916,12 +877,12 @@ contains
             Csw_nM(m)%filename, filelist, datapath, &
             Csw_nM(m)%fields,  &
             Csw_nM(m)%file, &
-            rmv_file, csw_cycle_yr, 0, 0, trim(csw_time_type) )
+            rmv_file, csw_cycle_yr, 0, 0, trim(csw_type) )
 
     enddo spc_loop
 
     ! ===================================
-    ! Output stuff to the history files
+    ! Output stuff in the historial files
     ! ===================================
     do m = 1, n_Csw_files
        call addfld('OCN_FLUX_' // trim(Csw_nM(m)%species), horiz_only, 'A', 'kg/m2/s', &
